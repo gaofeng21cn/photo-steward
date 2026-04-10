@@ -102,3 +102,43 @@ def test_planner_preserves_duplicate_instances_by_allocating_dup_suffixes() -> N
 
     targets = sorted(action.target_relative_path for action in plan.mirror_actions)
     assert targets == ["2024/10/IMG_1231.HEIC", "2024/10/IMG_1231__dup1.HEIC"]
+
+
+def test_planner_relocates_bound_resource_when_date_parent_changes() -> None:
+    icloud_resources = [
+        ICloudResource(
+            resource_key="asset-1:0:4bff8fb24icbad40f25194df33a91bc4.jpg",
+            asset_uuid="asset-1",
+            asset_local_identifier="asset-1/L0/001",
+            resource_index=0,
+            original_filename="4bff8fb24icbad40f25194df33a91bc4.jpg",
+            created_at="2025-09-20T08:01:29+08:00",
+            sha256="sha-a",
+            bytes_count=100,
+            source_kind="local_file",
+            source_path="/source/4bff8fb24icbad40f25194df33a91bc4.jpg",
+            source_state_token="src-1",
+        )
+    ]
+    nas_files = [
+        NasFile(
+            relative_path="2000/01/4bff8fb24icbad40f25194df33a91bc4.jpg",
+            absolute_path="/nas/2000/01/4bff8fb24icbad40f25194df33a91bc4.jpg",
+            sha256="sha-a",
+            bytes_count=100,
+            state_token="nas-1",
+        )
+    ]
+
+    plan = build_sync_plan(
+        icloud_resources=icloud_resources,
+        nas_files=nas_files,
+        existing_bindings={"asset-1:0:4bff8fb24icbad40f25194df33a91bc4.jpg": "2000/01/4bff8fb24icbad40f25194df33a91bc4.jpg"},
+        plan_id="plan-3",
+    )
+
+    assert len(plan.mirror_actions) == 1
+    assert plan.mirror_actions[0].target_relative_path == "2025/09/4bff8fb24icbad40f25194df33a91bc4.jpg"
+    assert len(plan.delete_actions) == 1
+    assert plan.delete_actions[0].relative_path == "2000/01/4bff8fb24icbad40f25194df33a91bc4.jpg"
+    assert plan.bindings["asset-1:0:4bff8fb24icbad40f25194df33a91bc4.jpg"] == "2025/09/4bff8fb24icbad40f25194df33a91bc4.jpg"

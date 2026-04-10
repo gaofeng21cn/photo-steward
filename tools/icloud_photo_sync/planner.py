@@ -37,6 +37,10 @@ def _pick_existing_candidate(resource: ICloudResource, candidates: list[NasFile]
     return sorted(candidates, key=score)[0]
 
 
+def _bound_path_requires_relocation(resource: ICloudResource, relative_path: str) -> bool:
+    return str(PurePosixPath(relative_path).parent) != _preferred_parent(resource.created_at)
+
+
 def _allocate_path(resource: ICloudResource, reserved_paths: set[str]) -> str:
     parent = _preferred_parent(resource.created_at)
     filename = normalize_filename(resource.original_filename)
@@ -64,6 +68,7 @@ def build_sync_plan(
     nas_by_rel = {item.relative_path: item for item in nas_files}
     unmatched_nas_by_hash: dict[str, list[NasFile]] = defaultdict(list)
     matched_nas_paths: set[str] = set()
+    stale_bound_paths: set[str] = set()
     unmatched_resources: list[ICloudResource] = []
 
     for item in nas_files:
@@ -76,6 +81,10 @@ def build_sync_plan(
         if bound_path:
             current = nas_by_rel.get(bound_path)
             if current is not None and current.sha256 == resource.sha256:
+                if _bound_path_requires_relocation(resource, current.relative_path):
+                    stale_bound_paths.add(current.relative_path)
+                    unmatched_resources.append(resource)
+                    continue
                 matched_nas_paths.add(current.relative_path)
                 plan.bindings[resource.resource_key] = current.relative_path
                 continue
@@ -86,7 +95,7 @@ def build_sync_plan(
         candidates = [
             item
             for item in unmatched_nas_by_hash.get(resource.sha256, [])
-            if item.relative_path not in matched_nas_paths
+            if item.relative_path not in matched_nas_paths and item.relative_path not in stale_bound_paths
         ]
         if not candidates:
             still_unmatched.append(resource)
