@@ -11,7 +11,7 @@ from .apply import execute_apply
 from .fingerprint import FingerprintService
 from .models import ICloudResource, NasFile, SyncPlan
 from .photos_bridge import PhotosBridge, PhotosResourceDescriptor
-from .photos_db import AssetMeta, load_asset_index
+from .photos_db import AssetMeta, load_asset_index_if_available
 from .planner import build_sync_plan
 from .state import StateStore
 from .utils import normalize_filename
@@ -307,10 +307,13 @@ def persist_plan_bundle(
     icloud_resources: list[ICloudResource],
     nas_files: list[NasFile],
     unresolved: list[dict],
+    extra_summary: dict | None = None,
 ) -> None:
     plan_dir.mkdir(parents=True, exist_ok=True)
     summary = plan.summary()
     summary["unresolved_count"] = len(unresolved)
+    if extra_summary:
+        summary.update(extra_summary)
 
     (plan_dir / "plan_summary.json").write_text(_json_dumps(summary), encoding="utf-8")
     _json_lines(
@@ -355,7 +358,20 @@ def run_plan(
     bridge = PhotosBridge(swift_source=swift_source, build_dir=state_db.parent / "bin")
 
     print(json.dumps({"stage": "load_asset_index"}, ensure_ascii=False), flush=True)
-    asset_index = load_asset_index(library_path=library_path, db_path=db_path)
+    asset_index_result = load_asset_index_if_available(library_path=library_path, db_path=db_path)
+    asset_index = asset_index_result.asset_index
+    if asset_index_result.warning:
+        print(
+            json.dumps(
+                {
+                    "stage": "asset_index_unavailable",
+                    "asset_index_source": asset_index_result.source,
+                    "warning": asset_index_result.warning,
+                },
+                ensure_ascii=False,
+            ),
+            flush=True,
+        )
     print(json.dumps({"stage": "list_photos_resources"}, ensure_ascii=False), flush=True)
     all_resource_descriptors = bridge.list_resources()
     resource_descriptors = select_primary_media_resources(all_resource_descriptors)
@@ -424,11 +440,16 @@ def run_plan(
         icloud_resources=icloud_resources,
         nas_files=nas_files,
         unresolved=unresolved,
+        extra_summary={
+            "asset_index_source": asset_index_result.source,
+            "asset_index_warning": asset_index_result.warning,
+        },
     )
 
     for resource_key, relative_path in plan.bindings.items():
         store.upsert_binding(resource_key, relative_path, plan_id)
-    store.record_plan(plan_id, str(dated_dir), json.dumps(plan.summary(), ensure_ascii=False))
+    plan_summary_payload = json.loads((dated_dir / "plan_summary.json").read_text(encoding="utf-8"))
+    store.record_plan(plan_id, str(dated_dir), json.dumps(plan_summary_payload, ensure_ascii=False))
     store.close()
     print(
         json.dumps(

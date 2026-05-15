@@ -2,7 +2,13 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PYTHON_BIN="${PYTHON_BIN:-/Users/gaofeng/.py-global/bin/python3}"
 cd "$ROOT_DIR"
+
+if [[ ! -x "$PYTHON_BIN" ]]; then
+  echo "python runtime missing: $PYTHON_BIN" >&2
+  exit 127
+fi
 
 if [[ "${1:-}" == "--plan-dir" ]]; then
   shift
@@ -10,11 +16,11 @@ if [[ "${1:-}" == "--plan-dir" ]]; then
     echo "missing value for --plan-dir" >&2
     exit 2
   fi
-  exec /usr/bin/python3 -m tools.icloud_photo_sync.cli apply --plan-dir "$1"
+  exec "$PYTHON_BIN" -m tools.icloud_photo_sync.cli apply-job --plan-dir "$1"
 fi
 
 if [[ "${1:-}" == "--latest" ]]; then
-  PLAN_DIR="$(/usr/bin/python3 - <<'PY'
+  PLAN_DIR="$("$PYTHON_BIN" - <<'PY'
 from pathlib import Path
 import json
 
@@ -34,13 +40,12 @@ candidates.sort()
 print(candidates[-1][1])
 PY
 )"
-  if [[ -z "$PLAN_DIR" ]]; then
+if [[ -z "$PLAN_DIR" ]]; then
     echo "no plan found" >&2
     exit 1
   fi
-  exec /usr/bin/python3 -m tools.icloud_photo_sync.cli apply --plan-dir "$PLAN_DIR"
+  exec "$PYTHON_BIN" -m tools.icloud_photo_sync.cli apply-job --plan-dir "$PLAN_DIR"
 fi
 
 echo "usage: $0 --plan-dir <plan_dir> | --latest" >&2
 exit 2
-

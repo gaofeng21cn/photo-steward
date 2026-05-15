@@ -20,6 +20,13 @@ class AssetMeta:
     directory: str
 
 
+@dataclass(frozen=True)
+class AssetIndexLoadResult:
+    asset_index: dict[str, AssetMeta]
+    source: str
+    warning: str | None = None
+
+
 def _apple_to_iso(raw_value: float | int | None) -> str | None:
     if raw_value is None:
         return None
@@ -67,3 +74,15 @@ def load_asset_index(library_path: Path, db_path: Path) -> dict[str, AssetMeta]:
         )
     connection.close()
     return asset_index
+
+
+def load_asset_index_if_available(library_path: Path, db_path: Path) -> AssetIndexLoadResult:
+    try:
+        asset_index = load_asset_index(library_path=library_path, db_path=db_path)
+    except (sqlite3.Error, OSError) as exc:
+        return AssetIndexLoadResult(
+            asset_index={},
+            source="photos_bridge_only",
+            warning=f"{type(exc).__name__}: {exc}",
+        )
+    return AssetIndexLoadResult(asset_index=asset_index, source="photos_db")

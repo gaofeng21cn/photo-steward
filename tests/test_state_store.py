@@ -46,3 +46,32 @@ def test_state_store_cache_miss_on_changed_state_token(tmp_path: Path) -> None:
     )
 
     assert store.get_cached_fingerprint("icloud", "asset-1:0:IMG_0001.JPG", "new-token") is None
+
+
+def test_state_store_caches_json_metadata_by_scope_and_state_token(tmp_path: Path) -> None:
+    db_path = tmp_path / "state.sqlite3"
+    store = StateStore(db_path)
+
+    store.upsert_cached_metadata(
+        cache_scope="google_review_review_capture_time",
+        resource_key="/tmp/a.jpg",
+        state_token="size:mtime:ctime",
+        payload={"capture_time": "2013:01:02 03:04:05", "status": "ok"},
+    )
+
+    cached = store.get_cached_metadata(
+        cache_scope="google_review_review_capture_time",
+        resource_key="/tmp/a.jpg",
+        state_token="size:mtime:ctime",
+    )
+
+    assert cached is not None
+    assert cached.payload["capture_time"] == "2013:01:02 03:04:05"
+    assert (
+        store.get_cached_metadata(
+            cache_scope="google_review_review_capture_time",
+            resource_key="/tmp/a.jpg",
+            state_token="changed-token",
+        )
+        is None
+    )

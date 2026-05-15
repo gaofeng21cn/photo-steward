@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -10,6 +11,12 @@ class CachedFingerprint:
     state_token: str
     sha256: str
     bytes_count: int
+
+
+@dataclass(frozen=True)
+class CachedMetadata:
+    state_token: str
+    payload: dict
 
 
 class StateStore:
@@ -54,6 +61,15 @@ class StateStore:
                 receipt_path TEXT NOT NULL,
                 summary_json TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS file_metadata_cache (
+                cache_scope TEXT NOT NULL,
+                resource_key TEXT NOT NULL,
+                state_token TEXT NOT NULL,
+                payload_json TEXT NOT NULL,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (cache_scope, resource_key)
             );
             """
         )
@@ -168,6 +184,48 @@ class StateStore:
             (plan_id,),
         ).fetchone()
         return row is not None
+
+    def get_cached_metadata(
+        self,
+        cache_scope: str,
+        resource_key: str,
+        state_token: str,
+    ) -> CachedMetadata | None:
+        row = self._conn.execute(
+            """
+            SELECT state_token, payload_json
+            FROM file_metadata_cache
+            WHERE cache_scope = ? AND resource_key = ? AND state_token = ?
+            """,
+            (cache_scope, resource_key, state_token),
+        ).fetchone()
+        if row is None:
+            return None
+        return CachedMetadata(
+            state_token=row["state_token"],
+            payload=json.loads(row["payload_json"]),
+        )
+
+    def upsert_cached_metadata(
+        self,
+        cache_scope: str,
+        resource_key: str,
+        state_token: str,
+        payload: dict,
+    ) -> None:
+        self._conn.execute(
+            """
+            INSERT INTO file_metadata_cache (cache_scope, resource_key, state_token, payload_json)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(cache_scope, resource_key)
+            DO UPDATE SET
+                state_token = excluded.state_token,
+                payload_json = excluded.payload_json,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (cache_scope, resource_key, state_token, json.dumps(payload, ensure_ascii=False)),
+        )
+        self._conn.commit()
 
     def close(self) -> None:
         self._conn.close()

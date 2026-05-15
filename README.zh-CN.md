@@ -4,18 +4,18 @@
 
 <h1 align="center">icloud-photo-sync</h1>
 
-<p align="center"><strong>面向 local-first 照片库的 iCloud Photos 到 NAS 守护式镜像工具</strong></p>
+<p align="center"><strong>面向 local-first 照片库的 iCloud Photos 到 NAS 守护式镜像工具，并支持 iCloud 主源目录到备份云盘的严格对齐</strong></p>
 <p align="center">先规划后变更 · 严格内容匹配 · 自动发现与手工 Apply 分离</p>
 
 <table>
   <tr>
     <td width="33%" valign="top">
       <strong>主要用途</strong><br/>
-      把 <code>iCloud Photos</code> 镜像到 NAS，同时避免让 NAS 反过来变成照片目录的真相源
+      把 <code>iCloud Photos</code> 镜像到 NAS，并把像 <code>ToDo</code> 这类 iCloud 主源目录严格对齐到备份云盘，同时避免备份端反过来变成真相源
     </td>
     <td width="33%" valign="top">
       <strong>操作入口</strong><br/>
-      Python CLI 加 shell 包装脚本，并可选接入 <code>launchd</code> 做定时 <code>plan</code>
+      Python CLI 加 shell 包装脚本，并可选接入 <code>launchd</code> 做定时 <code>plan</code>、待删池清理和 OneDrive 备份
     </td>
     <td width="33%" valign="top">
       <strong>安全模型</strong><br/>
@@ -24,7 +24,7 @@
   </tr>
 </table>
 
-> 对外，`icloud-photo-sync` 是一个 `iCloud Photos -> NAS` 的 local-first 镜像工具。对内，它是一套把规划阶段与文件变更阶段严格拆开的双阶段同步面。
+> 对外，`icloud-photo-sync` 最初是一个 `iCloud Photos -> NAS` 的 local-first 镜像工具。现在它也承载了 `iCloud 主源目录 -> 备份镜像目录` 的双阶段同步能力，例如 `Documents/ToDo -> OneDrive/ToDo`。
 
 ## 项目定位
 
@@ -35,6 +35,7 @@
 - `iCloud Photos` 是权威目录
 - NAS 是镜像目标，不是日常整理入口
 - `OneDrive` 之类工具可以继续做异地备份，但不负责判断哪份是当前正确状态
+- 像 `ToDo` 这样的工作目录也应复用同样的 `plan -> apply -> 审核池` 机制，而不是人工拖拽同步
 
 ## 它解决什么问题
 
@@ -43,6 +44,7 @@
 - 当内容已从 iCloud 消失时，把 NAS 上的对应项移动到 `/Volumes/home/Photos_DeletedFromICloud`，而不是直接删除
 - 把运行收据统一落到 `/Volumes/home/Photos_SyncLogs/YYYY-MM-DD/<plan_id>/`
 - 允许定时自动发现变化，但不把 NAS 变更权限直接交给定时任务
+- 针对主源目录生成严格的 `folder-plan`，并把镜像侧残留内容先移入审核池，再复制主源视图
 
 ## 快速开始
 
@@ -51,14 +53,24 @@
 ```bash
 python3 -m tools.icloud_photo_sync.cli plan
 python3 -m tools.icloud_photo_sync.cli apply --plan-dir /Volumes/home/Photos_SyncLogs/YYYY-MM-DD/<plan_id>
+python3 -m tools.icloud_photo_sync.cli plan-job
+python3 -m tools.icloud_photo_sync.cli todo-plan-job
+python3 -m tools.icloud_photo_sync.cli prune-deleted-pool --dry-run
+python3 -m tools.icloud_photo_sync.cli backup-onedrive --dry-run
+python3 -m tools.icloud_photo_sync.cli todo-plan
+python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_logs/YYYY-MM-DD/<plan_id>
 ```
 
 常用包装脚本：
 
 ```bash
 ./scripts/run_plan.sh
+./scripts/run_todo_plan.sh
 ./scripts/run_apply_latest.sh --plan-dir /Volumes/home/Photos_SyncLogs/YYYY-MM-DD/<plan_id>
 ./scripts/run_apply_latest.sh --latest
+./scripts/run_deleted_pool_retention.sh --dry-run
+./scripts/run_onedrive_backup.sh --dry-run
+./scripts/install_launchd_agents.sh
 ```
 
 ## 运行期布局
@@ -72,25 +84,43 @@ python3 -m tools.icloud_photo_sync.cli apply --plan-dir /Volumes/home/Photos_Syn
 运行期状态不作为 Git 事实的一部分：
 
 - 状态库：`state/icloud-photo-sync/state.sqlite3`
+- 最新作业状态：`state/status/latest_*.json`
+- 最新总览：`state/status/latest_overview.md`
 - 临时 staging：`tmp/icloud_photo_sync_stage`
 - 同步日志：`/Volumes/home/Photos_SyncLogs`
+- 通用目录同步日志：`state/folder_sync_logs`
 - NAS 待删池：`/Volumes/home/Photos_DeletedFromICloud`
+- OneDrive 备份根目录：`/Users/gaofeng/OneDrive/Backup/icloud-photo-sync`
+- ToDo 审核池：`/Users/gaofeng/Library/CloudStorage/OneDrive-个人/ToDo_OneDriveOnlyReview/<plan_id>/`
 
 ## 自动化模型
 
-推荐的自动化策略是非对称的：
+推荐的自动化策略是分层且非对称的：
 
-- 自动执行 `plan`
+- 自动执行 `plan-job`
+- 自动执行 `todo-plan-job`
+- 自动执行待删池保留期清理
+- 自动执行从 NAS 到 OneDrive 的备份
 - `apply` 保持手工触发
 - 在真正修改 NAS 前，先审阅生成的计划目录或最新一次计划结果
 
 这样可以让“发现变化”足够便宜，同时给复制和删除移动保留一道硬门槛。
+
+`./scripts/install_launchd_agents.sh` 默认安装三条 `launchd` 任务：
+
+- `com.gaofeng.icloud-photo-sync.plan.daily`：`03:15`
+- `com.gaofeng.icloud-photo-sync.deleted-pool.daily`：`04:00`
+- `com.gaofeng.icloud-photo-sync.onedrive.daily`：`04:15`
+- `com.gaofeng.icloud-photo-sync.todo.daily`：`04:30`
+
+三条任务的 stdout/stderr 都写到 `tmp/automation/`。
 
 ## 当前边界
 
 - 当前实现围绕 macOS Photos library 和仓库内置的 Swift bridge 构建。
 - 匹配逻辑是严格内容导向的，不使用模糊启发式去合并“看起来像”的近重复项。
 - NAS 删除采用可审计的待删池移动机制，而不是立即 destructive remove。
+- 通用目录同步同样坚持主源权威：镜像侧多余内容先移入审核池，再复制主源内容。
 - 这个仓库是同步工具，不是通用 DAM、云后端或图库 UI。
 
 ## 面向 Agent
@@ -100,9 +130,15 @@ python3 -m tools.icloud_photo_sync.cli apply --plan-dir /Volumes/home/Photos_Syn
 典型 Agent 任务：
 
 - 执行 `plan`
+- 执行 `plan-job` 并检查 `state/status/latest_plan.json`
+- 执行 `todo-plan-job` 并检查 `state/status/latest_todo_plan.json`
 - 检查生成的收据与计划目录
 - 对明确选定的 `plan_dir` 执行 `apply`
-- 安装或审计定时 `plan` 自动化
+- 执行 `todo-plan`，对齐 `/Users/gaofeng/Documents/ToDo` 与 `OneDrive/ToDo`
+- 检查 `state/folder_sync_logs/YYYY-MM-DD/<plan_id>/`
+- 只对已审阅的目录计划执行 `todo-apply`
+- 以 dry-run 方式执行 `prune-deleted-pool` 或 `backup-onedrive`
+- 安装或审计整套定时自动化
 
 ## 文档
 
@@ -110,6 +146,8 @@ python3 -m tools.icloud_photo_sync.cli apply --plan-dir /Volumes/home/Photos_Syn
 - [主源工作流说明](docs/icloud-photo-authoritative-workflow.md)
 - [设计文档](docs/specs/2026-04-09-icloud-photo-sync-design.md)
 - [实施计划](docs/plans/2026-04-09-icloud-photo-sync.md)
+- [ToDo 主源对齐设计](docs/specs/2026-04-10-icloud-todo-onedrive-design.md)
+- [ToDo 主源对齐实施计划](docs/plans/2026-04-10-icloud-todo-onedrive.md)
 
 当前详细文档以中文为主，因为实际运行面主要服务于个人、本地、长期运维。
 
