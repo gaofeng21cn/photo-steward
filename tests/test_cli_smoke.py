@@ -93,3 +93,11 @@ def test_preflight_command_returns_mount_identity(monkeypatch, capsys) -> None:
     assert cli.main(["preflight"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["mounted_from"] == "//user@nas/home"
+
+
+def test_receipt_result_returns_nonzero_for_partial(tmp_path, capsys) -> None:
+    receipt_path = tmp_path / "receipt.json"
+    receipt_path.write_text(json.dumps({"status": "partial"}), encoding="utf-8")
+
+    assert cli._print_receipt_result(receipt_path) == 1
+    assert str(receipt_path) in capsys.readouterr().out

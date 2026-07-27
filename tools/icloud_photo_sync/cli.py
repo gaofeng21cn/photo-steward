@@ -69,6 +69,12 @@ def _load_status_bundle(status_dir: Path, scope: str) -> dict:
     return {"scope": scope, "status_dir": str(status_dir), "jobs": jobs}
 
 
+def _print_receipt_result(receipt_path: Path) -> int:
+    print(receipt_path)
+    payload = json.loads(Path(receipt_path).read_text(encoding="utf-8"))
+    return 0 if payload.get("status") == "success" else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="icloud-photo-sync")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -226,8 +232,7 @@ def main(argv: list[str] | None = None) -> int:
             state_db=args.state_db,
             swift_source=args.swift_source,
         )
-        print(receipt_path)
-        return 0
+        return _print_receipt_result(receipt_path)
 
     if args.command == "plan-job":
         try:
@@ -318,8 +323,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "folder-apply":
         receipt_path = apply_folder_plan(Path(args.plan_dir))
-        print(receipt_path)
-        return 0
+        return _print_receipt_result(receipt_path)
 
     if args.command == "google-review-plan":
         _preflight_nas(args)
@@ -351,8 +355,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "todo-apply":
         receipt_path = apply_folder_plan(Path(args.plan_dir))
-        print(receipt_path)
-        return 0
+        return _print_receipt_result(receipt_path)
 
     if args.command == "todo-plan-job":
         try:
