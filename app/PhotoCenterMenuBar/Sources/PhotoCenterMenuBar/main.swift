@@ -69,6 +69,12 @@ final class PhotoCenterModel: ObservableObject {
     var statusSymbol: String { isHealthy ? "checkmark.circle.fill" : "exclamationmark.triangle.fill" }
     var statusColor: Color { isHealthy ? .green : .orange }
 
+    init() {
+        DispatchQueue.main.async { [weak self] in
+            self?.refresh()
+        }
+    }
+
     func refresh() {
         run(["preflight"]) { [weak self] output, exitCode in
             guard let self else { return }
@@ -222,7 +228,6 @@ struct PanelView: View {
         }
         .padding(16)
         .frame(width: 340)
-        .task { model.refresh() }
     }
 
     private var dataSize: String {
