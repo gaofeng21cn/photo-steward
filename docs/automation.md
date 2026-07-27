@@ -48,6 +48,11 @@ python3 -m tools.icloud_photo_sync.cli status --scope todo --format markdown
 `mounted_from`、挂载点、文件系统及读写能力。这样 `/Volumes/home`
 目录存在但 SMB 未挂载时不会误写本地磁盘。
 
+写能力通过挂载根目录中的持久空文件
+`/Volumes/home/.icloud-photo-sync-write-probe` 验证。检查只打开或创建
+该 sentinel，不写入、不截断、不删除，避免每次运行都向 Synology
+`#recycle` 产生临时探针文件。
+
 ### 1. 计划任务
 
 ```bash

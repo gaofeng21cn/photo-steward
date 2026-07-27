@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import os
 import subprocess
-import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable, Iterable
+
+
+WRITE_PROBE_NAME = ".icloud-photo-sync-write-probe"
 
 
 class MountContractError(RuntimeError):
@@ -92,14 +94,14 @@ def inspect_mount(
 
     writable = False
     if require_writable:
+        probe_path = mount_point / WRITE_PROBE_NAME
         try:
-            with tempfile.NamedTemporaryFile(
-                dir=mount_point,
-                prefix=".icloud-photo-sync-mount-probe-",
-            ):
-                writable = True
+            descriptor = os.open(probe_path, os.O_WRONLY | os.O_CREAT, 0o600)
+            os.close(descriptor)
         except OSError as exc:
             raise MountContractError(f"mounted filesystem is not writable: {mount_point}: {exc}") from exc
+        else:
+            writable = True
 
     return MountIdentity(
         checked_path=str(checked_path),
