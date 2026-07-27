@@ -70,6 +70,17 @@ final class PhotoCenterModel: ObservableObject {
     var statusColor: Color { isHealthy ? .green : .orange }
 
     func refresh() {
+        run(["preflight"]) { [weak self] output, exitCode in
+            guard let self else { return }
+            guard exitCode == 0 else {
+                self.message = "NAS 检查失败: \(Self.outputMessage(output))"
+                return
+            }
+            self.loadStatus()
+        }
+    }
+
+    private func loadStatus() {
         run(["status", "--scope", "photo", "--format", "json"]) { [weak self] output, exitCode in
             guard let self else { return }
             guard exitCode == 0 else {
