@@ -12,6 +12,11 @@ fi
 mkdir -p "$ROOT_DIR/tmp/automation"
 cd "$ROOT_DIR"
 
+if ! wait_for_nas_mount; then
+  notify_sync "NAS mount unavailable; backup skipped"
+  exit 75
+fi
+
 if "$PYTHON_BIN" -m tools.icloud_photo_sync.cli backup-onedrive "$@"; then
   exit 0
 else

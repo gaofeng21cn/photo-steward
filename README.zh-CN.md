@@ -15,7 +15,7 @@
     </td>
     <td width="33%" valign="top">
       <strong>操作入口</strong><br/>
-      Python CLI 加 shell 包装脚本，并可选接入 <code>launchd</code> 做定时 <code>plan</code>、待删池清理和 OneDrive 备份
+      CLI 维护接口、Codex 专业 Skill 交互入口和 macOS 菜单栏状态控制台；<code>launchd</code> 负责定时发现与备份
     </td>
     <td width="33%" valign="top">
       <strong>安全模型</strong><br/>
@@ -31,8 +31,8 @@
 用户应把本项目理解为“iCloud 照片中台的本机同步服务”，而不是一组零散脚本：
 
 - 确定性服务与 CLI：执行资源识别、计划、复制、日期重定位、隔离和收据
-- Codex 专业 Skill：未来的主要用户入口，负责检查、解释、复核和经确认后执行
-- macOS 菜单栏 App：未来的轻量状态与审批控制台，不复制同步逻辑
+- Codex 专业 Skill：主要用户入口，负责检查、解释、复核和经确认后执行
+- macOS 菜单栏 App：已实现的轻量状态与审批控制台，不复制同步逻辑
 
 它是控制面 AI-first、数据面确定性的系统。AI 可以解释差额和组织复核，但覆盖、迁移与删除只接受可重复的元数据、SHA-256、guard 和收据证据。
 
@@ -81,6 +81,8 @@ python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_l
 ./scripts/run_deleted_pool_retention.sh --dry-run
 ./scripts/run_onedrive_backup.sh --dry-run
 ./scripts/install_launchd_agents.sh
+./scripts/install_local.sh
+./scripts/install_menu_bar_app.sh
 ```
 
 ## 运行期布局
@@ -110,22 +112,48 @@ python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_l
 推荐的自动化策略是分层且非对称的：
 
 - 自动执行 `plan-job`
-- 自动执行 `todo-plan-job`
 - 自动执行待删池保留期清理
 - 自动执行从 NAS 到 OneDrive 的备份
 - `apply` 保持手工触发
 - 在真正修改 NAS 前，先审阅生成的计划目录或最新一次计划结果
+- ToDo 计划发现通过 `scripts/install_launchd_todo_agent.sh` 显式启用，与照片中心状态分开
 
 这样可以让“发现变化”足够便宜，同时给复制和删除移动保留一道硬门槛。
 
-`./scripts/install_launchd_agents.sh` 默认安装四条 `launchd` 任务：
+`./scripts/install_launchd_agents.sh` 默认安装三条照片中心 `launchd` 任务：
 
 - `com.gaofeng.icloud-photo-sync.plan.daily`：`03:15`
 - `com.gaofeng.icloud-photo-sync.deleted-pool.daily`：`04:00`
 - `com.gaofeng.icloud-photo-sync.onedrive.daily`：`04:15`
-- `com.gaofeng.icloud-photo-sync.todo.daily`：`04:30`
 
-四条任务的 stdout/stderr 都写到 `tmp/automation/`。
+如需 ToDo 计划发现，再单独执行：
+
+```bash
+./scripts/install_launchd_todo_agent.sh
+```
+
+ToDo 任务的 stdout/stderr 也写到 `tmp/automation/`，但不属于照片中心健康状态。
+
+## 三层用户入口
+
+安装本机 CLI 和 Codex Skill：
+
+```bash
+./scripts/install_local.sh
+icloud-photo-sync status --scope photo --format json
+```
+
+安装菜单栏控制台：
+
+```bash
+./scripts/install_menu_bar_app.sh
+open "$HOME/Applications/iCloud Photo Center.app"
+```
+
+Skill 和菜单栏 App 都调用同一个 CLI。Skill 负责自然语言检查、计划解释、
+审批组织和显式 Apply；菜单栏 App 显示状态、数据量、进度和待审计划，并在
+确认后调用同一个 `apply-job`。同步规则、身份、SHA-256、guard 和 receipt
+只有底层服务拥有。
 
 照片相关命令在扫描 Photos 或 NAS 前严格验证 `/Volumes/home` 是可读写的 `smbfs` 挂载，并把 `mounted_from`、挂载点和文件系统写入状态。目录存在但 SMB 未挂载时会 fail-closed，避免写进本地同名目录。
 

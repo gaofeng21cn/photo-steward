@@ -15,7 +15,7 @@
     </td>
     <td width="33%" valign="top">
       <strong>Interface</strong><br/>
-      Python CLI plus shell wrappers, with optional <code>launchd</code> jobs for scheduled planning, deleted-pool retention, and OneDrive backup
+      A deterministic CLI, a Codex Skill as the conversational entry point, and a macOS menu bar status console; <code>launchd</code> handles discovery and backup
     </td>
     <td width="33%" valign="top">
       <strong>Safety Model</strong><br/>
@@ -30,9 +30,9 @@
 
 Treat this project as the local synchronization service for an iCloud-centered
 photo hub, not as a loose collection of scripts. The deterministic CLI is the
-data plane, a Codex Skill is the intended conversational control plane, and an
-optional macOS menu bar app can provide status and approval without duplicating
-sync logic.
+data plane, the installed Codex Skill is the conversational control plane, and
+the macOS menu bar app provides status and approval without duplicating sync
+logic.
 
 The system is AI-first at the control plane and deterministic at the data
 plane. AI can explain differences and organize review; overwrite, relocation,
@@ -83,6 +83,8 @@ Wrapper scripts are provided for the common path:
 ./scripts/run_deleted_pool_retention.sh --dry-run
 ./scripts/run_onedrive_backup.sh --dry-run
 ./scripts/install_launchd_agents.sh
+./scripts/install_local.sh
+./scripts/install_menu_bar_app.sh
 ```
 
 ## Runtime Layout
@@ -112,11 +114,11 @@ Runtime state stays outside Git intent even when some paths live inside the repo
 The recommended automation policy is intentionally asymmetric and layered:
 
 - automate `plan-job`
-- automate `todo-plan-job`
 - automate deleted-pool retention
 - automate OneDrive backup from NAS
 - keep `apply` manual
 - review the generated plan or the latest plan directory before mutating the NAS
+- enable ToDo plan discovery separately with `./scripts/install_launchd_todo_agent.sh`
 
 That keeps daily discovery cheap while preserving a hard gate before file copies and deletion moves.
 
@@ -125,9 +127,33 @@ The default scheduled jobs installed by `./scripts/install_launchd_agents.sh` ar
 - `com.gaofeng.icloud-photo-sync.plan.daily` at `03:15`
 - `com.gaofeng.icloud-photo-sync.deleted-pool.daily` at `04:00`
 - `com.gaofeng.icloud-photo-sync.onedrive.daily` at `04:15`
-- `com.gaofeng.icloud-photo-sync.todo.daily` at `04:30`
 
-All four jobs write stdout/stderr under `tmp/automation/`.
+To enable the independent ToDo plan job, run
+`./scripts/install_launchd_todo_agent.sh`. It remains outside the photo-center
+health scope. The photo jobs and the optional ToDo job write stdout/stderr under
+`tmp/automation/`.
+
+## User Surfaces
+
+Install the local CLI and Codex Skill:
+
+```bash
+./scripts/install_local.sh
+icloud-photo-sync status --scope photo --format json
+```
+
+Install the macOS menu bar console:
+
+```bash
+./scripts/install_menu_bar_app.sh
+open "$HOME/Applications/iCloud Photo Center.app"
+```
+
+The Skill and app invoke the same CLI. The Skill handles conversational
+inspection, plan explanation, review, and explicit approval; the app displays
+health, counts, bytes, progress, and pending plans, then invokes the same
+`apply-job` after confirmation. Sync identity, SHA-256, guards, and receipts
+remain owned by the local service.
 
 Photo jobs verify that `/Volumes/home` is a readable and writable `smbfs` mount
 before scanning Photos or NAS data. The actual source, mount point, and

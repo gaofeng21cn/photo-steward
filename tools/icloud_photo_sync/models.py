@@ -81,7 +81,9 @@ class SyncPlan:
         return {
             "plan_id": self.plan_id,
             "mirror_count": len(self.mirror_actions),
+            "mirror_bytes": sum(item.bytes_count for item in self.mirror_actions),
             "delete_count": len(self.delete_actions),
+            "delete_bytes": sum(item.bytes_count for item in self.delete_actions),
             "unresolved_count": len(self.unresolved),
             "binding_count": len(self.bindings),
         }

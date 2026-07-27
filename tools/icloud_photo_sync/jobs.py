@@ -115,7 +115,9 @@ def _render_overview(status_dir: Path, heading: str, job_names: tuple[str, ...])
                 sections.append(
                     "- summary: "
                     f"mirror={summary.get('mirror_count', 0)} "
+                    f"mirror_bytes={summary.get('mirror_bytes', 0)} "
                     f"delete={summary.get('delete_count', 0)} "
+                    f"delete_bytes={summary.get('delete_bytes', 0)} "
                     f"unresolved={summary.get('unresolved_count', 0)}"
                 )
             elif job_name == "todo_plan":
@@ -131,7 +133,9 @@ def _render_overview(status_dir: Path, heading: str, job_names: tuple[str, ...])
                 sections.append(
                     "- summary: "
                     f"deleted_moved={deleted.get('moved', 0)} "
+                    f"deleted_bytes={deleted.get('bytes', 0)} "
                     f"mirror_copied={mirrored.get('copied', 0)} "
+                    f"mirror_bytes={mirrored.get('bytes', 0)} "
                     f"guard_failed={deleted.get('guard_failed', 0) + mirrored.get('guard_failed', 0)}"
                 )
             else:

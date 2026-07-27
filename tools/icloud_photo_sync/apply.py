@@ -43,8 +43,8 @@ def execute_apply(
     receipt = {
         "plan_id": plan_id,
         "deleted_pool_relative_root": deleted_pool_relative_root,
-        "deleted": {"moved": 0, "guard_failed": 0, "missing": 0},
-        "mirrored": {"copied": 0, "already_present": 0, "guard_failed": 0},
+        "deleted": {"moved": 0, "bytes": 0, "guard_failed": 0, "missing": 0},
+        "mirrored": {"copied": 0, "bytes": 0, "already_present": 0, "guard_failed": 0},
     }
 
     moved_delete_paths: set[str] = set()
@@ -62,6 +62,7 @@ def execute_apply(
         _move_to_pool(source, deleted_pool_root, relative_path)
         moved_delete_paths.add(relative_path)
         receipt["deleted"]["moved"] += 1
+        receipt["deleted"]["bytes"] += int(item.get("bytes", 0))
         return True
 
     for item in delete_items:
@@ -120,6 +121,7 @@ def execute_apply(
                 target.unlink(missing_ok=True)
                 continue
             receipt["mirrored"]["copied"] += 1
+            receipt["mirrored"]["bytes"] += int(item.get("bytes", 0))
 
     incomplete_count = (
         receipt["deleted"]["guard_failed"]

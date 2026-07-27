@@ -4,6 +4,14 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 AGENT_DIR="$HOME/Library/LaunchAgents"
 UID_VALUE="$(id -u)"
+INCLUDE_TODO=false
+
+if [[ "${1:-}" == "--include-todo" ]]; then
+  INCLUDE_TODO=true
+elif [[ $# -gt 0 ]]; then
+  echo "usage: $0 [--include-todo]" >&2
+  exit 2
+fi
 
 mkdir -p "$AGENT_DIR" "$ROOT_DIR/tmp/automation"
 
@@ -58,8 +66,12 @@ PLIST
   "$ROOT_DIR/scripts/run_apply_latest.sh" \
   "$ROOT_DIR/scripts/run_deleted_pool_retention.sh" \
   "$ROOT_DIR/scripts/run_onedrive_backup.sh" \
-  "$ROOT_DIR/scripts/install_launchd_plan_agent.sh" \
+  "$ROOT_DIR/scripts/install_launchd_todo_agent.sh" \
   "$ROOT_DIR/scripts/install_launchd_agents.sh"
+
+TODO_LABEL="com.gaofeng.icloud-photo-sync.todo.daily"
+/bin/launchctl bootout "gui/$UID_VALUE/$TODO_LABEL" >/dev/null 2>&1 || true
+/bin/rm -f "$AGENT_DIR/$TODO_LABEL.plist"
 
 write_plist \
   "com.gaofeng.icloud-photo-sync.plan.daily" \
@@ -85,16 +97,21 @@ write_plist \
   "$ROOT_DIR/tmp/automation/onedrive.stdout.log" \
   "$ROOT_DIR/tmp/automation/onedrive.stderr.log"
 
-write_plist \
-  "com.gaofeng.icloud-photo-sync.todo.daily" \
-  "$ROOT_DIR/scripts/run_todo_plan.sh" \
-  "4" \
-  "30" \
-  "$ROOT_DIR/tmp/automation/todo.stdout.log" \
-  "$ROOT_DIR/tmp/automation/todo.stderr.log"
+if [[ "$INCLUDE_TODO" == true ]]; then
+  /bin/chmod +x "$ROOT_DIR/scripts/run_todo_plan.sh"
+  write_plist \
+    "$TODO_LABEL" \
+    "$ROOT_DIR/scripts/run_todo_plan.sh" \
+    "4" \
+    "30" \
+    "$ROOT_DIR/tmp/automation/todo.stdout.log" \
+    "$ROOT_DIR/tmp/automation/todo.stderr.log"
+fi
 
 printf '%s\n' \
   "$AGENT_DIR/com.gaofeng.icloud-photo-sync.plan.daily.plist" \
-  "$AGENT_DIR/com.gaofeng.icloud-photo-sync.todo.daily.plist" \
   "$AGENT_DIR/com.gaofeng.icloud-photo-sync.deleted-pool.daily.plist" \
   "$AGENT_DIR/com.gaofeng.icloud-photo-sync.onedrive.daily.plist"
+if [[ "$INCLUDE_TODO" == true ]]; then
+  printf '%s\n' "$AGENT_DIR/$TODO_LABEL.plist"
+fi

@@ -23,10 +23,10 @@
 ## 当前策略
 
 - 自动执行 `plan-job`
-- 自动执行 `todo-plan-job`
 - 自动执行待删池保留期清理
 - 自动执行 `NAS -> OneDrive` 备份
 - `apply-job` 仍保持人工触发
+- ToDo `todo-plan-job` 需要单独安装，不并入照片中心默认健康状态
 
 这样可以把“发现变化”和“真正改文件”拆开：
 
@@ -176,6 +176,12 @@ python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_l
 ./scripts/install_launchd_agents.sh
 ```
 
+默认只安装照片中心的三条任务。ToDo 计划发现是显式 opt-in：
+
+```bash
+./scripts/install_launchd_todo_agent.sh
+```
+
 兼容入口：
 
 ```bash
@@ -184,16 +190,12 @@ python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_l
 
 它现在只是转调 `install_launchd_agents.sh`。
 
-## 默认计划
+## 默认照片中心计划
 
 - `com.gaofeng.icloud-photo-sync.plan.daily`
   - 时间：每天 `03:15`
   - stdout：`tmp/automation/plan.stdout.log`
   - stderr：`tmp/automation/plan.stderr.log`
-- `com.gaofeng.icloud-photo-sync.todo.daily`
-  - 时间：每天 `04:30`
-  - stdout：`tmp/automation/todo.stdout.log`
-  - stderr：`tmp/automation/todo.stderr.log`
 - `com.gaofeng.icloud-photo-sync.deleted-pool.daily`
   - 时间：每天 `04:00`
   - stdout：`tmp/automation/deleted-pool.stdout.log`
@@ -202,6 +204,13 @@ python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_l
   - 时间：每天 `04:15`
   - stdout：`tmp/automation/onedrive.stdout.log`
   - stderr：`tmp/automation/onedrive.stderr.log`
+
+启用 ToDo 任务后，额外增加：
+
+- `com.gaofeng.icloud-photo-sync.todo.daily`
+  - 时间：每天 `04:30`
+  - stdout：`tmp/automation/todo.stdout.log`
+  - stderr：`tmp/automation/todo.stderr.log`
 
 ## 状态与留痕
 
@@ -254,9 +263,14 @@ python3 -m tools.icloud_photo_sync.cli backup-onedrive --dry-run
 
 ```bash
 launchctl kickstart -k gui/$(id -u)/com.gaofeng.icloud-photo-sync.plan.daily
-launchctl kickstart -k gui/$(id -u)/com.gaofeng.icloud-photo-sync.todo.daily
 launchctl kickstart -k gui/$(id -u)/com.gaofeng.icloud-photo-sync.deleted-pool.daily
 launchctl kickstart -k gui/$(id -u)/com.gaofeng.icloud-photo-sync.onedrive.daily
+```
+
+如已启用 ToDo 任务，再单独 kickstart：
+
+```bash
+launchctl kickstart -k gui/$(id -u)/com.gaofeng.icloud-photo-sync.todo.daily
 ```
 
 ## 边界

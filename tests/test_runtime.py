@@ -56,7 +56,9 @@ def test_persist_plan_bundle_writes_expected_files(tmp_path: Path) -> None:
     summary = json.loads((plan_dir / "plan_summary.json").read_text(encoding="utf-8"))
     assert summary["plan_id"] == "plan-1"
     assert summary["mirror_count"] == 1
+    assert summary["mirror_bytes"] == 100
     assert summary["delete_count"] == 1
+    assert summary["delete_bytes"] == 50
     assert summary["unresolved_count"] == 1
 
 

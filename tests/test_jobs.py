@@ -15,7 +15,9 @@ def test_run_plan_job_writes_success_status_and_overview(tmp_path: Path) -> None
             {
                 "plan_id": "plan-1",
                 "mirror_count": 2,
+                "mirror_bytes": 2048,
                 "delete_count": 1,
+                "delete_bytes": 512,
                 "unresolved_count": 0,
                 "binding_count": 3,
             }
@@ -64,6 +66,8 @@ def test_run_plan_job_writes_success_status_and_overview(tmp_path: Path) -> None
     assert latest["pending_plan_dir"] == str(plan_dir)
     assert "latest_plan.json" not in overview
     assert "mirror=2" in overview
+    assert "mirror_bytes=2048" in overview
+    assert "delete_bytes=512" in overview
     assert (status_dir / "latest_photo_overview.md").exists()
     assert (status_dir / "latest_todo_overview.md").exists()
 

@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 
@@ -65,7 +66,9 @@ def test_execute_apply_moves_delete_candidates_and_copies_new_files(tmp_path: Pa
     )
 
     assert receipt["deleted"]["moved"] == 1
+    assert receipt["deleted"]["bytes"] == 8
     assert receipt["mirrored"]["copied"] == 1
+    assert receipt["mirrored"]["bytes"] == 9
     assert (deleted_root / receipt["deleted_pool_relative_root"] / "2024" / "10" / "EXTRA.JPG").exists()
     assert (nas_root / "2024" / "10" / "IMG_1002.JPG").read_bytes() == b"new-photo"
 
@@ -104,3 +107,49 @@ def test_execute_apply_skips_delete_when_guard_fails(tmp_path: Path) -> None:
 
     assert receipt["deleted"]["guard_failed"] == 1
     assert obsolete.exists()
+
+
+def test_execute_apply_accepts_legacy_manifests_without_bytes(tmp_path: Path) -> None:
+    nas_root = tmp_path / "Photos"
+    deleted_root = tmp_path / "Photos_DeletedFromICloud"
+    plan_dir = tmp_path / "plan"
+    source_dir = tmp_path / "source"
+    nas_root.mkdir()
+    deleted_root.mkdir()
+    plan_dir.mkdir()
+    source_dir.mkdir()
+
+    source = source_dir / "IMG_1003.JPG"
+    source.write_bytes(b"legacy")
+
+    mirror_manifest = {
+        "items": [
+            {
+                "resource_key": "asset-3:0:IMG_1003.JPG",
+                "target_relative_path": "2024/10/IMG_1003.JPG",
+                "sha256": hashlib.sha256(b"legacy").hexdigest(),
+                "source_kind": "local_file",
+                "source_path": str(source),
+                "source_state_token": _state_token(source),
+            }
+        ]
+    }
+    (plan_dir / "move_to_nas_deleted_pool.json").write_text(
+        json.dumps({"items": []}), encoding="utf-8"
+    )
+    (plan_dir / "mirror_to_nas.json").write_text(
+        json.dumps(mirror_manifest), encoding="utf-8"
+    )
+    (plan_dir / "plan_summary.json").write_text(
+        json.dumps({"plan_id": "legacy-plan"}), encoding="utf-8"
+    )
+
+    receipt = execute_apply(
+        plan_dir=plan_dir,
+        nas_root=nas_root,
+        deleted_root=deleted_root,
+    )
+
+    assert receipt["status"] == "success"
+    assert receipt["mirrored"]["copied"] == 1
+    assert receipt["mirrored"]["bytes"] == 0

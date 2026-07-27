@@ -82,13 +82,21 @@ Relocate out of the core:
 - `latest_photo_overview.md` and `latest_todo_overview.md` are projections, not
   sources of truth.
 
-## Delivery sequence
+## Current delivery state
 
-1. Stabilize the local service contract and live automation.
-2. Package a professional Codex Skill around the stable CLI and JSON status.
-3. Build the menu bar app as a read-mostly control console.
+The first three product layers are implemented and installed from the
+canonical repository:
+
+1. The local service and CLI provide the deterministic data plane.
+2. `skills/icloud-photo-center` is the Codex conversational control plane.
+3. `app/PhotoCenterMenuBar` is a read-mostly macOS menu bar console.
+
+The remaining architecture work is bounded follow-up, not a missing user
+surface:
+
 4. Add verified OneDrive remote readback.
 5. Relocate generic folder sync and archive historical migration code.
 
-The menu bar app should not start before steps 1 and 2 are stable; otherwise the
-same lifecycle bugs would be duplicated into a second implementation.
+The app remains intentionally thin. It reads the JSON status contract, starts
+the CLI for plan generation and explicit Apply, and does not contain a second
+copy of the synchronization rules.

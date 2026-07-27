@@ -4,6 +4,9 @@ notify_sync() {
   /usr/bin/osascript -e "display notification \"$1\" with title \"icloud-photo-sync\"" >/dev/null 2>&1 || true
 }
 
+NAS_PREFLIGHT_ATTEMPTS="${NAS_PREFLIGHT_ATTEMPTS:-6}"
+NAS_PREFLIGHT_INTERVAL_SECONDS="${NAS_PREFLIGHT_INTERVAL_SECONDS:-20}"
+
 resolve_python() {
   local candidate
   local -a candidates
@@ -28,4 +31,20 @@ resolve_python() {
 
   echo "working Python 3.10+ runtime not found" >&2
   return 127
+}
+
+wait_for_nas_mount() {
+  local attempt=1
+  while (( attempt <= NAS_PREFLIGHT_ATTEMPTS )); do
+    if "$PYTHON_BIN" -m tools.icloud_photo_sync.cli preflight >/dev/null 2>&1; then
+      return 0
+    fi
+    if (( attempt < NAS_PREFLIGHT_ATTEMPTS )); then
+      sleep "$NAS_PREFLIGHT_INTERVAL_SECONDS"
+    fi
+    attempt=$((attempt + 1))
+  done
+
+  echo "NAS mount preflight failed after ${NAS_PREFLIGHT_ATTEMPTS} attempts" >&2
+  return 1
 }
