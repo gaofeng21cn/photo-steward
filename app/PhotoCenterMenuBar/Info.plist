@@ -6,6 +6,8 @@
   <string>iCloud Photo Center</string>
   <key>CFBundleIdentifier</key>
   <string>com.gaofeng.icloud-photo-center</string>
+  <key>CFBundleExecutable</key>
+  <string>PhotoCenterMenuBar</string>
   <key>CFBundleName</key>
   <string>PhotoCenterMenuBar</string>
   <key>CFBundlePackageType</key>

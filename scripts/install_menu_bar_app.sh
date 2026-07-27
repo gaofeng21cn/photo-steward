@@ -14,5 +14,6 @@ cp "$BUILD_DIR/PhotoCenterMenuBar" "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"
 cp "$ROOT_DIR/app/PhotoCenterMenuBar/Info.plist" "$APP_DIR/Contents/Info.plist"
 printf '%s\n' "$ROOT_DIR" > "$APP_DIR/Contents/Resources/repository-root.txt"
 chmod +x "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"
+codesign --force --deep --sign - "$APP_DIR"
 
 printf '%s\n' "$APP_DIR"
