@@ -1,7 +1,12 @@
 import json
 from pathlib import Path
 
-from tools.icloud_photo_sync.jobs import run_onedrive_backup_job, run_plan_job, run_todo_plan_job
+from tools.icloud_photo_sync.jobs import (
+    record_job_failure,
+    run_onedrive_backup_job,
+    run_plan_job,
+    run_todo_plan_job,
+)
 
 
 def test_run_plan_job_writes_success_status_and_overview(tmp_path: Path) -> None:
@@ -214,6 +219,43 @@ def test_failure_preserves_previous_success_and_pending_plan(tmp_path: Path) -> 
     assert latest["consecutive_failures"] == 1
     assert latest["last_success"]["plan_dir"] == str(plan_dir)
     assert latest["pending_plan_dir"] == str(plan_dir)
+
+
+def test_record_job_failure_preserves_last_success(tmp_path: Path) -> None:
+    status_dir = tmp_path / "status"
+    plan_dir = tmp_path / "logs" / "plan-1"
+    plan_dir.mkdir(parents=True)
+    (plan_dir / "plan_summary.json").write_text(
+        json.dumps({"mirror_count": 0, "delete_count": 0, "unresolved_count": 0}),
+        encoding="utf-8",
+    )
+    run_plan_job(
+        library_path=tmp_path / "library",
+        db_path=tmp_path / "db",
+        nas_root=tmp_path / "Photos",
+        logs_root=tmp_path / "logs",
+        state_db=tmp_path / "state.db",
+        stage_dir=tmp_path / "stage",
+        swift_source=tmp_path / "bridge.swift",
+        status_dir=status_dir,
+        plan_runner=lambda **kwargs: plan_dir,
+    )
+
+    record_job_failure(
+        status_dir=status_dir,
+        job_name="plan",
+        message="NAS mount preflight failed",
+        exit_code=75,
+    )
+
+    latest = json.loads((status_dir / "latest_plan.json").read_text(encoding="utf-8"))
+    assert latest["status"] == "failed"
+    assert latest["exit_code"] == 75
+    assert latest["message"] == "NAS mount preflight failed"
+    assert latest["last_success"]["plan_dir"] == str(plan_dir)
+    assert latest["last_success_at"] is not None
+    assert latest["consecutive_failures"] == 1
+    assert latest["pending_plan_dir"] is None
 
 
 def test_onedrive_job_raises_for_failed_receipt_after_writing_status(tmp_path: Path) -> None:

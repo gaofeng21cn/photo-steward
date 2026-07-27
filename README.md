@@ -159,6 +159,12 @@ Photo jobs verify that `/Volumes/home` is a readable and writable `smbfs` mount
 before scanning Photos or NAS data. The actual source, mount point, and
 filesystem are recorded in status. An unmounted local fallback fails closed.
 
+macOS gates Network Volumes by responsible process. `launchd` remains the
+scheduler, but scheduled NAS jobs enter through the signed
+`iCloud Photo Center.app --run-job` runner and then call the existing wrappers
+and CLI. The app does not own a second synchronization implementation.
+Preflight retries are bounded, and NAS traversal errors fail closed into status.
+
 ## Current Boundaries
 
 - The current implementation is built around macOS Photos library access and the bundled Swift bridge.

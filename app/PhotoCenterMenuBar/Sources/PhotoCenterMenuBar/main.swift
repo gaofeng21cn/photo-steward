@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 import Foundation
 import SwiftUI
 
@@ -241,7 +242,6 @@ struct PanelView: View {
     }
 }
 
-@main
 struct PhotoCenterMenuBar: App {
     @StateObject private var model = PhotoCenterModel()
 
@@ -255,3 +255,64 @@ struct PhotoCenterMenuBar: App {
         .menuBarExtraStyle(.window)
     }
 }
+
+private func runScheduledJobIfRequested() -> Int32? {
+    let arguments = CommandLine.arguments
+    guard let flagIndex = arguments.firstIndex(of: "--run-job") else {
+        return nil
+    }
+    guard arguments.indices.contains(flagIndex + 1) else {
+        FileHandle.standardError.write(Data("missing --run-job value\n".utf8))
+        return EX_USAGE
+    }
+
+    let scriptNames = [
+        "plan": "run_plan.sh",
+        "deleted-pool": "run_deleted_pool_retention.sh",
+        "onedrive": "run_onedrive_backup.sh",
+        "todo": "run_todo_plan.sh",
+    ]
+    let jobName = arguments[flagIndex + 1]
+    guard let scriptName = scriptNames[jobName] else {
+        FileHandle.standardError.write(Data("unknown scheduled job: \(jobName)\n".utf8))
+        return EX_USAGE
+    }
+    guard
+        let resourcesURL = Bundle.main.resourceURL,
+        let repositoryRoot = try? String(
+            contentsOf: resourcesURL.appendingPathComponent("repository-root.txt"),
+            encoding: .utf8
+        ).trimmingCharacters(in: .whitespacesAndNewlines),
+        !repositoryRoot.isEmpty
+    else {
+        FileHandle.standardError.write(Data("repository root metadata is unavailable\n".utf8))
+        return EX_CONFIG
+    }
+
+    let scriptURL = URL(fileURLWithPath: repositoryRoot)
+        .appendingPathComponent("scripts")
+        .appendingPathComponent(scriptName)
+    guard FileManager.default.isExecutableFile(atPath: scriptURL.path) else {
+        FileHandle.standardError.write(Data("scheduled job script is unavailable: \(scriptURL.path)\n".utf8))
+        return EX_CONFIG
+    }
+
+    let task = Process()
+    task.executableURL = scriptURL
+    task.currentDirectoryURL = URL(fileURLWithPath: repositoryRoot)
+    task.standardOutput = FileHandle.standardOutput
+    task.standardError = FileHandle.standardError
+    do {
+        try task.run()
+        task.waitUntilExit()
+        return task.terminationStatus
+    } catch {
+        FileHandle.standardError.write(Data("scheduled job failed to start: \(error)\n".utf8))
+        return EX_OSERR
+    }
+}
+
+if let exitCode = runScheduledJobIfRequested() {
+    exit(exitCode)
+}
+PhotoCenterMenuBar.main()

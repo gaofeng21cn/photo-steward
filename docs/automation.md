@@ -182,6 +182,16 @@ python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_l
 ./scripts/install_launchd_todo_agent.sh
 ```
 
+安装脚本会先构建并签名菜单栏 App。plist 的 `ProgramArguments` 指向：
+
+```text
+~/Applications/iCloud Photo Center.app/Contents/MacOS/PhotoCenterMenuBar --run-job <job>
+```
+
+这是 macOS Network Volumes 的 responsible-process 入口。App runner 只选择
+已有 wrapper，wrapper 仍调用同一个 CLI；它不复制计划、Apply、guard 或
+receipt 逻辑。
+
 兼容入口：
 
 ```bash
@@ -233,6 +243,8 @@ python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_l
 
 JSON 状态保留 `last_attempt_at`、`last_success_at`、`consecutive_failures`、
 `pending_plan_dir` 和真实 `mount` 身份。失败不会再覆盖最后一次成功证据。
+NAS 预检每次有硬超时；所有重试耗尽时返回 `75` 并写入 failed 状态。
+NAS 遍历或指纹阶段发生权限错误时也 fail-closed，不会把不可读目录当成空库。
 
 `latest_overview.md` 用来快速回答：
 

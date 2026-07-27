@@ -85,6 +85,27 @@ def _write_status(status_dir: Path, job_name: str, payload: dict) -> None:
     write_latest_overview(status_dir)
 
 
+def record_job_failure(
+    *,
+    status_dir: Path,
+    job_name: str,
+    message: str,
+    exit_code: int,
+) -> None:
+    _write_status(
+        status_dir,
+        job_name,
+        {
+            "job_name": job_name,
+            "status": "failed",
+            "exit_code": exit_code,
+            "started_at": _now_iso(),
+            "finished_at": _now_iso(),
+            "message": message,
+        },
+    )
+
+
 def _render_overview(status_dir: Path, heading: str, job_names: tuple[str, ...]) -> str:
     sections: list[str] = [f"# {heading}", ""]
     for job_name in job_names:

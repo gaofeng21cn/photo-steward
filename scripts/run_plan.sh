@@ -14,6 +14,7 @@ mkdir -p "$ROOT_DIR/tmp/automation"
 cd "$ROOT_DIR"
 
 if ! wait_for_nas_mount; then
+  record_job_failure plan "NAS mount preflight failed" 75
   notify_sync "NAS mount unavailable; scheduled plan skipped"
   exit 75
 fi

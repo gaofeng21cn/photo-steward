@@ -63,6 +63,9 @@ Relocate out of the core:
 - Keep standard-library SQLite and SHA-256. SQLAlchemy and a database service
   would add complexity without improving this single-user workload.
 - Keep `launchd`; it is the macOS-native scheduler.
+- Route NAS-backed launchd jobs through the signed menu bar app as the macOS
+  responsible process. The app delegates to existing wrappers and does not
+  duplicate synchronization logic.
 - Keep guarded photo plan/apply logic. `rsync`, Syncthing, and rclone do not
   implement authoritative-source, date relocation, and quarantine rules.
 - Replace local File Provider-only OneDrive proof with `rclone copy` plus remote
@@ -79,6 +82,8 @@ Relocate out of the core:
 - `partial` and failed receipts remain pending and return a non-zero job result.
 - Latest status records last attempt, last success, consecutive failures,
   pending plan, and the actual NAS mount source.
+- Scheduled preflight timeouts and NAS traversal errors are terminal failures;
+  they preserve the last success instead of producing an empty-NAS plan.
 - `latest_photo_overview.md` and `latest_todo_overview.md` are projections, not
   sources of truth.
 
