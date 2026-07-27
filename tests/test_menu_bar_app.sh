@@ -9,4 +9,5 @@ plutil -lint "$ROOT_DIR/app/PhotoCenterMenuBar/Info.plist" >/dev/null
 [[ -n "$(plutil -extract NSNetworkVolumesUsageDescription raw "$ROOT_DIR/app/PhotoCenterMenuBar/Info.plist")" ]]
 rg -q -- "--run-job" "$ROOT_DIR/app/PhotoCenterMenuBar/Sources/PhotoCenterMenuBar/main.swift"
 rg -Fq 'run(["preflight"], timeoutSeconds: 15)' "$ROOT_DIR/app/PhotoCenterMenuBar/Sources/PhotoCenterMenuBar/main.swift"
+rg -Fq 'falling back to ad-hoc signing' "$ROOT_DIR/scripts/install_menu_bar_app.sh"
 print "menu_bar_app: SwiftUI release build and plist valid"

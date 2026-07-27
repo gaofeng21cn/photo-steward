@@ -16,7 +16,10 @@ cp "$ROOT_DIR/app/PhotoCenterMenuBar/Info.plist" "$APP_DIR/Contents/Info.plist"
 printf '%s\n' "$ROOT_DIR" > "$APP_DIR/Contents/Resources/repository-root.txt"
 chmod +x "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"
 if security find-identity -v -p codesigning | grep -Fq "\"$SIGNING_IDENTITY\""; then
-  codesign --force --deep --options runtime --sign "$SIGNING_IDENTITY" "$APP_DIR"
+  if ! codesign --force --deep --options runtime --sign "$SIGNING_IDENTITY" "$APP_DIR"; then
+    echo "Developer ID signing unavailable; falling back to ad-hoc signing" >&2
+    codesign --force --deep --sign - "$APP_DIR"
+  fi
 else
   codesign --force --deep --sign - "$APP_DIR"
 fi
