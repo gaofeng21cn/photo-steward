@@ -3,6 +3,12 @@ import Darwin
 import Foundation
 import SwiftUI
 
+private let nasMountPath = "/Volumes/home"
+
+private func probeNASAccess() throws {
+    _ = try FileManager.default.contentsOfDirectory(atPath: nasMountPath)
+}
+
 struct JobSummary: Decodable {
     let mirrorCount: Int?
     let mirrorBytes: Int?
@@ -76,6 +82,12 @@ final class PhotoCenterModel: ObservableObject {
     }
 
     func refresh() {
+        do {
+            try probeNASAccess()
+        } catch {
+            message = "NAS 权限检查失败: \(error.localizedDescription)"
+            return
+        }
         run(["preflight"], timeoutSeconds: 15) { [weak self] output, exitCode in
             guard let self else { return }
             guard exitCode == 0 else {
@@ -309,6 +321,12 @@ private func runScheduledJobIfRequested() -> Int32? {
     guard let scriptName = scriptNames[jobName] else {
         FileHandle.standardError.write(Data("unknown scheduled job: \(jobName)\n".utf8))
         return EX_USAGE
+    }
+    do {
+        try probeNASAccess()
+    } catch {
+        FileHandle.standardError.write(Data("NAS access is unavailable: \(error)\n".utf8))
+        return EX_NOPERM
     }
     guard
         let resourcesURL = Bundle.main.resourceURL,
