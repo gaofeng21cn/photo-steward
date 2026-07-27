@@ -192,6 +192,10 @@ python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_l
 已有 wrapper，wrapper 仍调用同一个 CLI；它不复制计划、Apply、guard 或
 receipt 逻辑。
 
+签名可通过 `PHOTO_CENTER_SIGNING_IDENTITY` 显式指定；否则自动选择本机首个
+`Developer ID Application`。钥匙串锁定或没有证书时回退到 ad-hoc 签名，
+App 仍可运行，但 Network Volumes 权限身份应在解锁后重新签名。
+
 兼容入口：
 
 ```bash

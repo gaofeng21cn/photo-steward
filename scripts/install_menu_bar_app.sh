@@ -5,7 +5,15 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 APP_NAME="iCloud Photo Center.app"
 APP_DIR="${HOME}/Applications/${APP_NAME}"
 BUILD_DIR="$ROOT_DIR/app/PhotoCenterMenuBar/.build/release"
-SIGNING_IDENTITY="${PHOTO_CENTER_SIGNING_IDENTITY:-Developer ID Application: FENG GAO (SVVC4TA784)}"
+SIGNING_IDENTITY="${PHOTO_CENTER_SIGNING_IDENTITY:-}"
+
+if [[ -z "$SIGNING_IDENTITY" ]]; then
+  SIGNING_IDENTITY="$(
+    security find-identity -v -p codesigning |
+      sed -n 's/^[[:space:]]*[0-9]*) [0-9A-F]* "\(Developer ID Application:.*\)"/\1/p' |
+      head -1
+  )"
+fi
 
 swift build --package-path "$ROOT_DIR/app/PhotoCenterMenuBar" -c release
 
@@ -15,7 +23,8 @@ cp "$BUILD_DIR/PhotoCenterMenuBar" "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"
 cp "$ROOT_DIR/app/PhotoCenterMenuBar/Info.plist" "$APP_DIR/Contents/Info.plist"
 printf '%s\n' "$ROOT_DIR" > "$APP_DIR/Contents/Resources/repository-root.txt"
 chmod +x "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"
-if security find-identity -v -p codesigning | grep -Fq "\"$SIGNING_IDENTITY\""; then
+if [[ -n "$SIGNING_IDENTITY" ]] &&
+  security find-identity -v -p codesigning | grep -Fq "\"$SIGNING_IDENTITY\""; then
   if ! codesign --force --deep --options runtime --sign "$SIGNING_IDENTITY" "$APP_DIR"; then
     echo "Developer ID signing unavailable; falling back to ad-hoc signing" >&2
     codesign --force --deep --sign - "$APP_DIR"
