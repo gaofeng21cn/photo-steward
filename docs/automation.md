@@ -36,6 +36,18 @@
 
 ## CLI 入口
 
+### 0. 运行前检查与状态
+
+```bash
+python3 -m tools.icloud_photo_sync.cli preflight
+python3 -m tools.icloud_photo_sync.cli status --scope photo --format json
+python3 -m tools.icloud_photo_sync.cli status --scope todo --format markdown
+```
+
+`preflight` 必须确认 NAS 路径由独立 `smbfs` 挂载承载，并回读
+`mounted_from`、挂载点、文件系统及读写能力。这样 `/Volumes/home`
+目录存在但 SMB 未挂载时不会误写本地磁盘。
+
 ### 1. 计划任务
 
 ```bash
@@ -147,11 +159,9 @@ python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_l
 - `scripts/run_onedrive_backup.sh`
 - `scripts/install_launchd_agents.sh`
 
-默认 Python 解释器：
-
-- `/Users/gaofeng/.py-global/bin/python3`
-
-这样可以避免 `launchd` 落回系统自带 `/usr/bin/python3` 导致环境不一致。
+包装脚本按 `/opt/homebrew/bin/python3`、`/usr/local/bin/python3`、
+`$HOME/.py-global/bin/python3` 的顺序选择可实际启动的 Python 3.10+。
+`PYTHON_BIN` 可显式覆盖。探测会真正启动解释器，不只检查可执行位。
 
 ## launchd 安装
 
@@ -198,6 +208,8 @@ python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_l
 - `state/status/latest_deleted_pool.json`
 - `state/status/latest_onedrive.json`
 - `state/status/latest_overview.md`
+- `state/status/latest_photo_overview.md`
+- `state/status/latest_todo_overview.md`
 
 运行收据：
 
@@ -205,7 +217,10 @@ python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_l
 - `deleted-pool` / `onedrive`：`/Volumes/home/Photos_SyncLogs/YYYY-MM-DD/<job_id>.json`
 - `todo-plan` / `todo-apply`：`state/folder_sync_logs/YYYY-MM-DD/<plan_id>/`
 
-`latest_overview.md` 用来快速回答三个问题：
+JSON 状态保留 `last_attempt_at`、`last_success_at`、`consecutive_failures`、
+`pending_plan_dir` 和真实 `mount` 身份。失败不会再覆盖最后一次成功证据。
+
+`latest_overview.md` 用来快速回答：
 
 - 最近一次 `plan` 是否成功
 - 最近一次 `todo-plan` 是否成功
@@ -244,5 +259,5 @@ launchctl kickstart -k gui/$(id -u)/com.gaofeng.icloud-photo-sync.onedrive.daily
 - `apply` 暂不自动化，这是故意保留的人为确认门槛
 - `OneDrive` 不参与同步判断，也不执行跟删
 - `Photos.sqlite` 现在只作为本地 originals 的可选加速器；若不可读，`plan` 仍应通过 Photos 元数据链路完成判断并把警告写入 `plan_summary.json`
-- `ToDo` 这类目录同步当前未接入定时任务；建议先手工 `todo-plan` / `todo-apply` 运行稳定后，再决定是否单独挂自动化
-- 当前已接入 `todo-plan-job` 的定时发现，但 `todo-apply` 仍保持手工触发
+- `ToDo` 已接入独立的 `todo-plan-job` 定时发现，但 `todo-apply` 仍保持手工触发
+- 照片与 ToDo 使用独立状态总览；共享代码不代表共享产品状态

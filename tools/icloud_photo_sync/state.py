@@ -142,6 +142,24 @@ class StateStore:
         )
         self._conn.commit()
 
+    def upsert_bindings(self, bindings: dict[str, str], plan_id: str) -> None:
+        self._conn.executemany(
+            """
+            INSERT INTO path_bindings (resource_key, relative_path, last_plan_id)
+            VALUES (?, ?, ?)
+            ON CONFLICT(resource_key)
+            DO UPDATE SET
+                relative_path = excluded.relative_path,
+                last_plan_id = excluded.last_plan_id,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            [
+                (resource_key, relative_path, plan_id)
+                for resource_key, relative_path in sorted(bindings.items())
+            ],
+        )
+        self._conn.commit()
+
     def record_plan(self, plan_id: str, plan_dir: str, summary_json: str) -> None:
         self._conn.execute(
             """

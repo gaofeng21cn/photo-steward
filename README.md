@@ -4,7 +4,7 @@
 
 <h1 align="center">icloud-photo-sync</h1>
 
-<p align="center"><strong>Guarded iCloud Photos to NAS mirroring, plus authoritative folder syncing for iCloud-managed workspaces</strong></p>
+<p align="center"><strong>A local photo-hub synchronization service with iCloud Photos as the authority</strong></p>
 <p align="center">Planning Before Mutation · SHA-First Matching · Automated Plan With Manual Apply</p>
 
 <table>
@@ -27,6 +27,16 @@
 > Publicly, `icloud-photo-sync` started as a local-first mirror tool for `iCloud Photos -> NAS`. It now also carries a guarded folder-sync surface for `iCloud authoritative -> backup mirror` workflows such as `Documents/ToDo -> OneDrive/ToDo`.
 
 ## Product Position
+
+Treat this project as the local synchronization service for an iCloud-centered
+photo hub, not as a loose collection of scripts. The deterministic CLI is the
+data plane, a Codex Skill is the intended conversational control plane, and an
+optional macOS menu bar app can provide status and approval without duplicating
+sync logic.
+
+The system is AI-first at the control plane and deterministic at the data
+plane. AI can explain differences and organize review; overwrite, relocation,
+and deletion remain governed by metadata, SHA-256, guards, and receipts.
 
 Use this repository when `iCloud Photos` is your only source of truth, `NAS` is the mirror that should follow it, and you want repeatable file-level synchronization instead of ad hoc export-and-copy routines.
 
@@ -51,6 +61,8 @@ This repository is intentionally narrower than a generic photo manager:
 Run from the repository root:
 
 ```bash
+python3 -m tools.icloud_photo_sync.cli preflight
+python3 -m tools.icloud_photo_sync.cli status --scope photo
 python3 -m tools.icloud_photo_sync.cli plan
 python3 -m tools.icloud_photo_sync.cli apply --plan-dir /Volumes/home/Photos_SyncLogs/YYYY-MM-DD/<plan_id>
 python3 -m tools.icloud_photo_sync.cli plan-job
@@ -85,7 +97,9 @@ Runtime state stays outside Git intent even when some paths live inside the repo
 
 - state DB: `state/icloud-photo-sync/state.sqlite3`
 - latest job status: `state/status/latest_*.json`
-- latest overview: `state/status/latest_overview.md`
+- combined overview: `state/status/latest_overview.md`
+- photo overview: `state/status/latest_photo_overview.md`
+- ToDo overview: `state/status/latest_todo_overview.md`
 - staging directory: `tmp/icloud_photo_sync_stage`
 - sync logs: `/Volumes/home/Photos_SyncLogs`
 - generic folder sync logs: `state/folder_sync_logs`
@@ -113,7 +127,11 @@ The default scheduled jobs installed by `./scripts/install_launchd_agents.sh` ar
 - `com.gaofeng.icloud-photo-sync.onedrive.daily` at `04:15`
 - `com.gaofeng.icloud-photo-sync.todo.daily` at `04:30`
 
-All three jobs write stdout/stderr under `tmp/automation/`.
+All four jobs write stdout/stderr under `tmp/automation/`.
+
+Photo jobs verify that `/Volumes/home` is a readable and writable `smbfs` mount
+before scanning Photos or NAS data. The actual source, mount point, and
+filesystem are recorded in status. An unmounted local fallback fails closed.
 
 ## Current Boundaries
 
@@ -143,6 +161,7 @@ Typical agent tasks:
 ## Documentation
 
 - [Automation guide](docs/automation.md)
+- [Product architecture](docs/architecture.md)
 - [Authoritative workflow notes](docs/icloud-photo-authoritative-workflow.md)
 - [Design spec](docs/specs/2026-04-09-icloud-photo-sync-design.md)
 - [Implementation plan](docs/plans/2026-04-09-icloud-photo-sync.md)

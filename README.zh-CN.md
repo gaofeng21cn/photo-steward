@@ -4,7 +4,7 @@
 
 <h1 align="center">icloud-photo-sync</h1>
 
-<p align="center"><strong>面向 local-first 照片库的 iCloud Photos 到 NAS 守护式镜像工具，并支持 iCloud 主源目录到备份云盘的严格对齐</strong></p>
+<p align="center"><strong>以 iCloud Photos 为权威源的本机照片中台同步服务</strong></p>
 <p align="center">先规划后变更 · 严格内容匹配 · 自动发现与手工 Apply 分离</p>
 
 <table>
@@ -27,6 +27,14 @@
 > 对外，`icloud-photo-sync` 最初是一个 `iCloud Photos -> NAS` 的 local-first 镜像工具。现在它也承载了 `iCloud 主源目录 -> 备份镜像目录` 的双阶段同步能力，例如 `Documents/ToDo -> OneDrive/ToDo`。
 
 ## 项目定位
+
+用户应把本项目理解为“iCloud 照片中台的本机同步服务”，而不是一组零散脚本：
+
+- 确定性服务与 CLI：执行资源识别、计划、复制、日期重定位、隔离和收据
+- Codex 专业 Skill：未来的主要用户入口，负责检查、解释、复核和经确认后执行
+- macOS 菜单栏 App：未来的轻量状态与审批控制台，不复制同步逻辑
+
+它是控制面 AI-first、数据面确定性的系统。AI 可以解释差额和组织复核，但覆盖、迁移与删除只接受可重复的元数据、SHA-256、guard 和收据证据。
 
 当你的照片管理规则是“`iCloud Photos` 唯一主源、`NAS` 只是镜像、备份工具不参与主判断”时，这个仓库提供的是可复现的文件级同步，而不是一次次手工导出再复制。
 
@@ -51,6 +59,8 @@
 在仓库根目录执行：
 
 ```bash
+python3 -m tools.icloud_photo_sync.cli preflight
+python3 -m tools.icloud_photo_sync.cli status --scope photo
 python3 -m tools.icloud_photo_sync.cli plan
 python3 -m tools.icloud_photo_sync.cli apply --plan-dir /Volumes/home/Photos_SyncLogs/YYYY-MM-DD/<plan_id>
 python3 -m tools.icloud_photo_sync.cli plan-job
@@ -86,6 +96,8 @@ python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_l
 - 状态库：`state/icloud-photo-sync/state.sqlite3`
 - 最新作业状态：`state/status/latest_*.json`
 - 最新总览：`state/status/latest_overview.md`
+- 照片状态总览：`state/status/latest_photo_overview.md`
+- ToDo 状态总览：`state/status/latest_todo_overview.md`
 - 临时 staging：`tmp/icloud_photo_sync_stage`
 - 同步日志：`/Volumes/home/Photos_SyncLogs`
 - 通用目录同步日志：`state/folder_sync_logs`
@@ -106,14 +118,16 @@ python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_l
 
 这样可以让“发现变化”足够便宜，同时给复制和删除移动保留一道硬门槛。
 
-`./scripts/install_launchd_agents.sh` 默认安装三条 `launchd` 任务：
+`./scripts/install_launchd_agents.sh` 默认安装四条 `launchd` 任务：
 
 - `com.gaofeng.icloud-photo-sync.plan.daily`：`03:15`
 - `com.gaofeng.icloud-photo-sync.deleted-pool.daily`：`04:00`
 - `com.gaofeng.icloud-photo-sync.onedrive.daily`：`04:15`
 - `com.gaofeng.icloud-photo-sync.todo.daily`：`04:30`
 
-三条任务的 stdout/stderr 都写到 `tmp/automation/`。
+四条任务的 stdout/stderr 都写到 `tmp/automation/`。
+
+照片相关命令在扫描 Photos 或 NAS 前严格验证 `/Volumes/home` 是可读写的 `smbfs` 挂载，并把 `mounted_from`、挂载点和文件系统写入状态。目录存在但 SMB 未挂载时会 fail-closed，避免写进本地同名目录。
 
 ## 当前边界
 
@@ -143,6 +157,7 @@ python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_l
 ## 文档
 
 - [自动化说明](docs/automation.md)
+- [产品与架构](docs/architecture.md)
 - [主源工作流说明](docs/icloud-photo-authoritative-workflow.md)
 - [设计文档](docs/specs/2026-04-09-icloud-photo-sync-design.md)
 - [实施计划](docs/plans/2026-04-09-icloud-photo-sync.md)

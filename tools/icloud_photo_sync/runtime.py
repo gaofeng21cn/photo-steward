@@ -336,6 +336,10 @@ def persist_plan_bundle(
         _json_dumps({"plan_id": plan.plan_id, "items": unresolved}),
         encoding="utf-8",
     )
+    (plan_dir / "proposed_bindings.json").write_text(
+        _json_dumps({"plan_id": plan.plan_id, "bindings": plan.bindings}),
+        encoding="utf-8",
+    )
 
 
 def run_plan(
@@ -446,8 +450,6 @@ def run_plan(
         },
     )
 
-    for resource_key, relative_path in plan.bindings.items():
-        store.upsert_binding(resource_key, relative_path, plan_id)
     plan_summary_payload = json.loads((dated_dir / "plan_summary.json").read_text(encoding="utf-8"))
     store.record_plan(plan_id, str(dated_dir), json.dumps(plan_summary_payload, ensure_ascii=False))
     store.close()
@@ -516,7 +518,15 @@ def run_apply(
     )
     receipt_path = Path(plan_dir) / "apply_receipt.json"
     store.record_apply(receipt["plan_id"], str(receipt_path), json.dumps(receipt, ensure_ascii=False))
-    store.mark_plan_applied(receipt["plan_id"])
+    if receipt.get("status") == "success":
+        bindings_path = Path(plan_dir) / "proposed_bindings.json"
+        if bindings_path.exists():
+            bindings_payload = json.loads(bindings_path.read_text(encoding="utf-8"))
+            if bindings_payload.get("plan_id") != receipt["plan_id"]:
+                store.close()
+                raise ValueError("proposed bindings plan_id does not match apply receipt")
+            store.upsert_bindings(bindings_payload.get("bindings", {}), receipt["plan_id"])
+        store.mark_plan_applied(receipt["plan_id"])
     store.close()
     print(json.dumps({"stage": "apply_done", "receipt_path": str(receipt_path), **receipt}, ensure_ascii=False), flush=True)
     return receipt_path

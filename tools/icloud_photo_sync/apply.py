@@ -121,6 +121,12 @@ def execute_apply(
                 continue
             receipt["mirrored"]["copied"] += 1
 
+    incomplete_count = (
+        receipt["deleted"]["guard_failed"]
+        + receipt["deleted"]["missing"]
+        + receipt["mirrored"]["guard_failed"]
+    )
+    receipt["status"] = "success" if incomplete_count == 0 else "partial"
     receipt_path = plan_dir / "apply_receipt.json"
     receipt_path.write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return receipt

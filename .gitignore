@@ -3,4 +3,5 @@ __pycache__/
 .DS_Store
 state/
 tmp/
-
+build/
+*.egg-info/

@@ -33,6 +33,16 @@ def test_state_store_caches_fingerprints_and_bindings(tmp_path: Path) -> None:
     assert store.get_binding("asset-1:0:IMG_0001.JPG") == "2024/10/IMG_0001.JPG"
     assert store.plan_exists("plan-1") is True
 
+    store.upsert_bindings(
+        {
+            "asset-1:0:IMG_0001.JPG": "2025/09/IMG_0001.JPG",
+            "asset-2:0:IMG_0002.JPG": "2025/09/IMG_0002.JPG",
+        },
+        "plan-2",
+    )
+    assert store.get_binding("asset-1:0:IMG_0001.JPG") == "2025/09/IMG_0001.JPG"
+    assert store.get_binding("asset-2:0:IMG_0002.JPG") == "2025/09/IMG_0002.JPG"
+
 
 def test_state_store_cache_miss_on_changed_state_token(tmp_path: Path) -> None:
     db_path = tmp_path / "state.sqlite3"

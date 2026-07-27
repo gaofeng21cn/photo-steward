@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -20,7 +21,8 @@ from .runtime import run_apply, run_plan
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_LIBRARY_PATH = Path("/Users/gaofeng/Pictures/照片图库.photoslibrary")
+USER_HOME = Path.home()
+DEFAULT_LIBRARY_PATH = USER_HOME / "Pictures" / "照片图库.photoslibrary"
 DEFAULT_DB_PATH = DEFAULT_LIBRARY_PATH / "database" / "Photos.sqlite"
 DEFAULT_NAS_ROOT = Path("/Volumes/home/Photos")
 DEFAULT_NAS_MOUNT_ROOT = Path("/Volumes/home")
@@ -30,12 +32,14 @@ DEFAULT_STATE_DB = REPO_ROOT / "state" / "icloud-photo-sync" / "state.sqlite3"
 DEFAULT_STATUS_DIR = REPO_ROOT / "state" / "status"
 DEFAULT_STAGE_DIR = REPO_ROOT / "tmp" / "icloud_photo_sync_stage"
 DEFAULT_SWIFT_SOURCE = Path(__file__).with_name("photos_bridge.swift")
-DEFAULT_ONEDRIVE_ROOT = Path("/Users/gaofeng/OneDrive/Backup/icloud-photo-sync")
+DEFAULT_ONEDRIVE_ROOT = USER_HOME / "OneDrive" / "Backup" / "icloud-photo-sync"
 DEFAULT_FOLDER_LOGS_ROOT = REPO_ROOT / "state" / "folder_sync_logs"
 DEFAULT_GOOGLE_REVIEW_LOGS_ROOT = REPO_ROOT / "state" / "google_review_logs"
-DEFAULT_TODO_SOURCE_ROOT = Path("/Users/gaofeng/Documents/ToDo")
-DEFAULT_TODO_TARGET_ROOT = Path("/Users/gaofeng/Library/CloudStorage/OneDrive-个人/ToDo")
-DEFAULT_TODO_REVIEW_ROOT = Path("/Users/gaofeng/Library/CloudStorage/OneDrive-个人/ToDo_OneDriveOnlyReview")
+DEFAULT_TODO_SOURCE_ROOT = USER_HOME / "Documents" / "ToDo"
+DEFAULT_TODO_TARGET_ROOT = USER_HOME / "Library" / "CloudStorage" / "OneDrive-个人" / "ToDo"
+DEFAULT_TODO_REVIEW_ROOT = (
+    USER_HOME / "Library" / "CloudStorage" / "OneDrive-个人" / "ToDo_OneDriveOnlyReview"
+)
 
 
 def _add_nas_mount_contract(parser: argparse.ArgumentParser) -> None:
@@ -51,9 +55,31 @@ def _preflight_nas(args: argparse.Namespace) -> dict:
     )
 
 
+def _load_status_bundle(status_dir: Path, scope: str) -> dict:
+    job_names = {
+        "photo": ("plan", "apply", "deleted_pool", "onedrive"),
+        "todo": ("todo_plan",),
+        "all": ("plan", "apply", "deleted_pool", "onedrive", "todo_plan"),
+    }[scope]
+    jobs = {}
+    for job_name in job_names:
+        path = status_dir / f"latest_{job_name}.json"
+        if path.exists():
+            jobs[job_name] = json.loads(path.read_text(encoding="utf-8"))
+    return {"scope": scope, "status_dir": str(status_dir), "jobs": jobs}
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="icloud-photo-sync")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    preflight_parser = subparsers.add_parser("preflight")
+    _add_nas_mount_contract(preflight_parser)
+
+    status_parser = subparsers.add_parser("status")
+    status_parser.add_argument("--status-dir", type=Path, default=DEFAULT_STATUS_DIR)
+    status_parser.add_argument("--scope", choices=("photo", "todo", "all"), default="photo")
+    status_parser.add_argument("--format", choices=("json", "markdown"), default="json")
 
     plan_parser = subparsers.add_parser("plan")
     plan_parser.add_argument("--library-path", type=Path, default=DEFAULT_LIBRARY_PATH)
@@ -159,6 +185,22 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "preflight":
+        print(json.dumps(_preflight_nas(args), ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "status":
+        if args.format == "json":
+            print(json.dumps(_load_status_bundle(args.status_dir, args.scope), ensure_ascii=False, indent=2))
+            return 0
+        overview_name = "latest_todo_overview.md" if args.scope == "todo" else "latest_photo_overview.md"
+        overview_path = args.status_dir / overview_name
+        if not overview_path.exists():
+            print(f"status overview not found: {overview_path}", file=sys.stderr)
+            return 1
+        print(overview_path.read_text(encoding="utf-8"), end="")
+        return 0
 
     if args.command == "plan":
         _preflight_nas(args)

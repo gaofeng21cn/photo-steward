@@ -1,9 +1,14 @@
+import json
+
+import tools.icloud_photo_sync.cli as cli
 from tools.icloud_photo_sync.cli import build_parser
 
 
 def test_cli_parser_supports_all_supported_subcommands() -> None:
     parser = build_parser()
 
+    preflight_args = parser.parse_args(["preflight"])
+    status_args = parser.parse_args(["status"])
     plan_args = parser.parse_args(["plan"])
     apply_args = parser.parse_args(["apply", "--plan-dir", "/tmp/plan"])
     plan_job_args = parser.parse_args(["plan-job"])
@@ -36,6 +41,9 @@ def test_cli_parser_supports_all_supported_subcommands() -> None:
     todo_apply_args = parser.parse_args(["todo-apply", "--plan-dir", "/tmp/plan"])
     todo_plan_job_args = parser.parse_args(["todo-plan-job"])
 
+    assert preflight_args.command == "preflight"
+    assert status_args.command == "status"
+    assert status_args.scope == "photo"
     assert plan_args.command == "plan"
     assert apply_args.command == "apply"
     assert apply_args.plan_dir == "/tmp/plan"
@@ -55,3 +63,33 @@ def test_cli_parser_supports_all_supported_subcommands() -> None:
     assert todo_apply_args.command == "todo-apply"
     assert todo_apply_args.plan_dir == "/tmp/plan"
     assert todo_plan_job_args.command == "todo-plan-job"
+
+
+def test_status_command_returns_machine_readable_bundle(tmp_path, capsys) -> None:
+    status_dir = tmp_path / "status"
+    status_dir.mkdir()
+    (status_dir / "latest_plan.json").write_text(
+        json.dumps({"status": "success", "summary": {"mirror_count": 2}}),
+        encoding="utf-8",
+    )
+
+    assert cli.main(["status", "--status-dir", str(status_dir)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["scope"] == "photo"
+    assert payload["jobs"]["plan"]["summary"]["mirror_count"] == 2
+
+
+def test_preflight_command_returns_mount_identity(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        cli,
+        "inspect_mount",
+        lambda *args, **kwargs: {
+            "mount_point": "/Volumes/home",
+            "mounted_from": "//user@nas/home",
+            "filesystem": "smbfs",
+        },
+    )
+
+    assert cli.main(["preflight"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["mounted_from"] == "//user@nas/home"
