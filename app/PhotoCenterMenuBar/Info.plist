@@ -20,7 +20,5 @@
   <true/>
   <key>NSNetworkVolumesUsageDescription</key>
   <string>访问 NAS 照片镜像以检查同步状态并执行已批准的计划。</string>
-  <key>NSPhotoLibraryUsageDescription</key>
-  <string>读取 iCloud Photos 作为照片中台的权威源，用于生成同步计划和导出镜像。</string>
 </dict>
 </plist>

@@ -8,11 +8,6 @@ let package = Package(
         .executable(name: "PhotoCenterMenuBar", targets: ["PhotoCenterMenuBar"])
     ],
     targets: [
-        .executableTarget(
-            name: "PhotoCenterMenuBar",
-            linkerSettings: [
-                .linkedFramework("Photos")
-            ]
-        )
+        .executableTarget(name: "PhotoCenterMenuBar")
     ]
 )

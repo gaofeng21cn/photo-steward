@@ -7,11 +7,8 @@ swift build --package-path "$ROOT_DIR/app/PhotoCenterMenuBar" -c release >/dev/n
 plutil -lint "$ROOT_DIR/app/PhotoCenterMenuBar/Info.plist" >/dev/null
 [[ "$(plutil -extract CFBundleExecutable raw "$ROOT_DIR/app/PhotoCenterMenuBar/Info.plist")" == "PhotoCenterMenuBar" ]]
 [[ -n "$(plutil -extract NSNetworkVolumesUsageDescription raw "$ROOT_DIR/app/PhotoCenterMenuBar/Info.plist")" ]]
-[[ -n "$(plutil -extract NSPhotoLibraryUsageDescription raw "$ROOT_DIR/app/PhotoCenterMenuBar/Info.plist")" ]]
 rg -q -- "--run-job" "$ROOT_DIR/app/PhotoCenterMenuBar/Sources/PhotoCenterMenuBar/main.swift"
 rg -Fq 'FileManager.default.contentsOfDirectory(atPath: nasMountPath)' \
-  "$ROOT_DIR/app/PhotoCenterMenuBar/Sources/PhotoCenterMenuBar/main.swift"
-rg -Fq 'PHPhotoLibrary.requestAuthorization(for: .readWrite)' \
   "$ROOT_DIR/app/PhotoCenterMenuBar/Sources/PhotoCenterMenuBar/main.swift"
 rg -Fq 'run(["preflight"], timeoutSeconds: 15)' "$ROOT_DIR/app/PhotoCenterMenuBar/Sources/PhotoCenterMenuBar/main.swift"
 rg -Fq 'falling back to ad-hoc signing' "$ROOT_DIR/scripts/install_menu_bar_app.sh"
