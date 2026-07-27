@@ -59,6 +59,12 @@ final class PhotoCenterModel: ObservableObject {
     var apply: JobStatus? { bundle.jobs["apply"] }
     var isHealthy: Bool { plan?.status == "success" && (plan?.summary?.unresolvedCount ?? 0) == 0 }
     var pendingPlan: String? { plan?.pendingPlanDir }
+    var pendingMirrorCount: Int { pendingPlan == nil ? 0 : plan?.summary?.mirrorCount ?? 0 }
+    var pendingDeleteCount: Int { pendingPlan == nil ? 0 : plan?.summary?.deleteCount ?? 0 }
+    var pendingBytes: Int {
+        guard pendingPlan != nil else { return 0 }
+        return (plan?.summary?.mirrorBytes ?? 0) + (plan?.summary?.deleteBytes ?? 0)
+    }
     var statusSymbol: String { isHealthy ? "checkmark.circle.fill" : "exclamationmark.triangle.fill" }
     var statusColor: Color { isHealthy ? .green : .orange }
 
@@ -162,8 +168,8 @@ struct PanelView: View {
 
             statusRow("服务状态", model.isHealthy ? "健康" : "需要检查")
             statusRow("最近成功", model.plan?.lastSuccessAt ?? "暂无")
-            statusRow("待同步", "\(model.plan?.summary?.mirrorCount ?? 0) 个资源")
-            statusRow("待隔离", "\(model.plan?.summary?.deleteCount ?? 0) 个文件")
+            statusRow("待同步", "\(model.pendingMirrorCount) 个资源")
+            statusRow("待隔离", "\(model.pendingDeleteCount) 个文件")
             statusRow("数据量", dataSize)
             statusRow("进度", progress)
             statusRow("未解析", "\(model.plan?.summary?.unresolvedCount ?? 0)")
@@ -208,8 +214,7 @@ struct PanelView: View {
     }
 
     private var dataSize: String {
-        let bytes = (model.plan?.summary?.mirrorBytes ?? 0) + (model.plan?.summary?.deleteBytes ?? 0)
-        return ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
+        ByteCountFormatter.string(fromByteCount: Int64(model.pendingBytes), countStyle: .file)
     }
 
     private var progress: String {
