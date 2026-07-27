@@ -18,10 +18,9 @@ fi
 swift build --package-path "$ROOT_DIR/app/PhotoCenterMenuBar" -c release
 
 rm -rf "$APP_DIR"
-mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
+mkdir -p "$APP_DIR/Contents/MacOS"
 cp "$BUILD_DIR/PhotoCenterMenuBar" "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"
 cp "$ROOT_DIR/app/PhotoCenterMenuBar/Info.plist" "$APP_DIR/Contents/Info.plist"
-printf '%s\n' "$ROOT_DIR" > "$APP_DIR/Contents/Resources/repository-root.txt"
 chmod +x "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"
 if [[ -n "$SIGNING_IDENTITY" ]] &&
   security find-identity -v -p codesigning | grep -Fq "\"$SIGNING_IDENTITY\""; then

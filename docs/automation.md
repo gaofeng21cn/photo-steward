@@ -182,15 +182,19 @@ python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_l
 ./scripts/install_launchd_todo_agent.sh
 ```
 
-安装脚本会先构建并签名菜单栏 App。plist 的 `ProgramArguments` 指向：
+安装脚本会先构建并签名菜单栏 App，随后让各 plist 的
+`ProgramArguments` 直接指向对应 wrapper：
 
 ```text
-~/Applications/iCloud Photo Center.app/Contents/MacOS/PhotoCenterMenuBar --run-job <job>
+plan         -> scripts/run_plan.sh
+deleted-pool -> scripts/run_deleted_pool_retention.sh
+onedrive     -> scripts/run_onedrive_backup.sh
+todo         -> scripts/run_todo_plan.sh
 ```
 
-这是 macOS Network Volumes 的 responsible-process 入口。App runner 只选择
-已有 wrapper，wrapper 仍调用同一个 CLI；它不复制计划、Apply、guard 或
-receipt 逻辑。
+wrapper 仍调用同一个 CLI，不复制计划、Apply、guard 或 receipt 逻辑。直接
+启动也让 Photos.framework bridge 保持 launchd 执行上下文，避免继承菜单栏
+App 的 TCC 责任进程身份。菜单栏 App 只承担交互控制台职责。
 
 签名可通过 `PHOTO_CENTER_SIGNING_IDENTITY` 显式指定；否则自动选择本机首个
 `Developer ID Application`。钥匙串锁定或没有证书时回退到 ad-hoc 签名，

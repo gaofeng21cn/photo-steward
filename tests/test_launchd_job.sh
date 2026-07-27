@@ -2,20 +2,27 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-APP_EXECUTABLE="$ROOT_DIR/app/PhotoCenterMenuBar/.build/release/PhotoCenterMenuBar"
+installer_text="$(<"$ROOT_DIR/scripts/install_launchd_agents.sh")"
+normalized_installer_text="$(print -r -- "$installer_text" | sed 's/^[[:space:]]*//')"
 
-swift build --package-path "$ROOT_DIR/app/PhotoCenterMenuBar" -c release >/dev/null
+assert_mapping() {
+  local label="$1"
+  local wrapper="$2"
+  local expected
+  expected="$(printf 'write_plist \\\n"%s" \\\n"$ROOT_DIR/scripts/%s"' "$label" "$wrapper")"
+  print -r -- "$normalized_installer_text" | rg -U -Fq -- "$expected"
+}
 
-set +e
-"$APP_EXECUTABLE" --run-job unknown >/dev/null 2>&1
-exit_code=$?
-set -e
+assert_mapping "com.gaofeng.icloud-photo-sync.plan.daily" "run_plan.sh"
+assert_mapping "com.gaofeng.icloud-photo-sync.deleted-pool.daily" "run_deleted_pool_retention.sh"
+assert_mapping "com.gaofeng.icloud-photo-sync.onedrive.daily" "run_onedrive_backup.sh"
+assert_mapping '$TODO_LABEL' "run_todo_plan.sh"
 
-[[ "$exit_code" == "64" ]]
-print "launchd_job: signed app runner rejects unknown jobs with EX_USAGE"
+[[ "$installer_text" != *"APP_EXECUTABLE"* ]]
+[[ "$installer_text" != *"--run-job"* ]]
 
-source_text="$(<"$ROOT_DIR/app/PhotoCenterMenuBar/Sources/PhotoCenterMenuBar/main.swift")"
-probe_offset="${source_text[(i)try probeNASAccess()]}"
-process_offset="${source_text[(i)let task = Process()]}"
-(( probe_offset > 0 && process_offset > probe_offset ))
-print "launchd_job: app probes NAS before starting the child process"
+app_source="$(<"$ROOT_DIR/app/PhotoCenterMenuBar/Sources/PhotoCenterMenuBar/main.swift")"
+[[ "$app_source" != *"--run-job"* ]]
+[[ "$app_source" != *"runScheduledJobIfRequested"* ]]
+
+print "launchd_job: scheduled jobs map directly to repository wrappers"

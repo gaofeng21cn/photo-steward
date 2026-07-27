@@ -157,10 +157,11 @@ Skill 和菜单栏 App 都调用同一个 CLI。Skill 负责自然语言检查�
 
 照片相关命令在扫描 Photos 或 NAS 前严格验证 `/Volumes/home` 是可读写的 `smbfs` 挂载，并把 `mounted_from`、挂载点和文件系统写入状态。目录存在但 SMB 未挂载时会 fail-closed，避免写进本地同名目录。
 
-macOS 会按 responsible process 控制 Network Volumes。定时任务仍由
-`launchd` 调度，但实际通过已签名的 `iCloud Photo Center.app --run-job`
-启动现有 wrapper，再进入同一 CLI；菜单栏 App 不包含第二套同步规则。NAS
-预检有有限重试和单次超时，目录遍历错误会 fail-closed 并写入最新状态。
+定时任务由 `launchd` 直接启动仓库内的 wrapper，再进入同一 CLI。这样
+Photos.framework bridge 保持稳定的 launchd 执行上下文，不会继承菜单栏 App
+的 TCC 责任进程身份。菜单栏 App 只提供状态、人工计划和显式 Apply，不包含
+第二套同步规则。NAS 预检有有限重试和单次超时，目录遍历错误会 fail-closed
+并写入最新状态。
 
 ## 当前边界
 

@@ -4,7 +4,6 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 AGENT_DIR="$HOME/Library/LaunchAgents"
 UID_VALUE="$(id -u)"
-APP_EXECUTABLE="$HOME/Applications/iCloud Photo Center.app/Contents/MacOS/PhotoCenterMenuBar"
 INCLUDE_TODO=false
 
 if [[ "${1:-}" == "--include-todo" ]]; then
@@ -19,7 +18,7 @@ mkdir -p "$AGENT_DIR" "$ROOT_DIR/tmp/automation"
 
 write_plist() {
   local label="$1"
-  local job_name="$2"
+  local executable="$2"
   local hour="$3"
   local minute="$4"
   local stdout_path="$5"
@@ -35,9 +34,7 @@ write_plist() {
   <string>$label</string>
   <key>ProgramArguments</key>
   <array>
-    <string>$APP_EXECUTABLE</string>
-    <string>--run-job</string>
-    <string>$job_name</string>
+    <string>$executable</string>
   </array>
   <key>WorkingDirectory</key>
   <string>$ROOT_DIR</string>
@@ -79,7 +76,7 @@ TODO_LABEL="com.gaofeng.icloud-photo-sync.todo.daily"
 
 write_plist \
   "com.gaofeng.icloud-photo-sync.plan.daily" \
-  "plan" \
+  "$ROOT_DIR/scripts/run_plan.sh" \
   "3" \
   "15" \
   "$ROOT_DIR/tmp/automation/plan.stdout.log" \
@@ -87,7 +84,7 @@ write_plist \
 
 write_plist \
   "com.gaofeng.icloud-photo-sync.deleted-pool.daily" \
-  "deleted-pool" \
+  "$ROOT_DIR/scripts/run_deleted_pool_retention.sh" \
   "4" \
   "0" \
   "$ROOT_DIR/tmp/automation/deleted-pool.stdout.log" \
@@ -95,7 +92,7 @@ write_plist \
 
 write_plist \
   "com.gaofeng.icloud-photo-sync.onedrive.daily" \
-  "onedrive" \
+  "$ROOT_DIR/scripts/run_onedrive_backup.sh" \
   "4" \
   "15" \
   "$ROOT_DIR/tmp/automation/onedrive.stdout.log" \
@@ -105,7 +102,7 @@ if [[ "$INCLUDE_TODO" == true ]]; then
   /bin/chmod +x "$ROOT_DIR/scripts/run_todo_plan.sh"
   write_plist \
     "$TODO_LABEL" \
-    "todo" \
+    "$ROOT_DIR/scripts/run_todo_plan.sh" \
     "4" \
     "30" \
     "$ROOT_DIR/tmp/automation/todo.stdout.log" \

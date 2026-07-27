@@ -63,9 +63,10 @@ Relocate out of the core:
 - Keep standard-library SQLite and SHA-256. SQLAlchemy and a database service
   would add complexity without improving this single-user workload.
 - Keep `launchd`; it is the macOS-native scheduler.
-- Route NAS-backed launchd jobs through the signed menu bar app as the macOS
-  responsible process. The app delegates to existing wrappers and does not
-  duplicate synchronization logic.
+- Route scheduled jobs directly through the existing wrappers so the
+  Photos.framework bridge keeps a stable launchd execution context. The menu
+  bar app remains an interactive console and does not own scheduled execution
+  or duplicate synchronization logic.
 - Keep guarded photo plan/apply logic. `rsync`, Syncthing, and rclone do not
   implement authoritative-source, date relocation, and quarantine rules.
 - Replace local File Provider-only OneDrive proof with `rclone copy` plus remote
