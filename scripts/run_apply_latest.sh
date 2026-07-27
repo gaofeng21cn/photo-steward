@@ -2,11 +2,11 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-PYTHON_BIN="${PYTHON_BIN:-/Users/gaofeng/.py-global/bin/python3}"
+source "$ROOT_DIR/scripts/lib/automation_common.sh"
 cd "$ROOT_DIR"
 
-if [[ ! -x "$PYTHON_BIN" ]]; then
-  echo "python runtime missing: $PYTHON_BIN" >&2
+if ! resolve_python; then
+  notify_sync "Python runtime unavailable"
   exit 127
 fi
 

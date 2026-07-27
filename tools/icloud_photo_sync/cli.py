@@ -14,6 +14,7 @@ from .jobs import (
     run_plan_job,
     run_todo_plan_job,
 )
+from .mounts import inspect_mount
 from .onedrive import run_onedrive_backup
 from .runtime import run_apply, run_plan
 
@@ -22,6 +23,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_LIBRARY_PATH = Path("/Users/gaofeng/Pictures/照片图库.photoslibrary")
 DEFAULT_DB_PATH = DEFAULT_LIBRARY_PATH / "database" / "Photos.sqlite"
 DEFAULT_NAS_ROOT = Path("/Volumes/home/Photos")
+DEFAULT_NAS_MOUNT_ROOT = Path("/Volumes/home")
 DEFAULT_LOGS_ROOT = Path("/Volumes/home/Photos_SyncLogs")
 DEFAULT_DELETED_ROOT = Path("/Volumes/home/Photos_DeletedFromICloud")
 DEFAULT_STATE_DB = REPO_ROOT / "state" / "icloud-photo-sync" / "state.sqlite3"
@@ -34,6 +36,19 @@ DEFAULT_GOOGLE_REVIEW_LOGS_ROOT = REPO_ROOT / "state" / "google_review_logs"
 DEFAULT_TODO_SOURCE_ROOT = Path("/Users/gaofeng/Documents/ToDo")
 DEFAULT_TODO_TARGET_ROOT = Path("/Users/gaofeng/Library/CloudStorage/OneDrive-个人/ToDo")
 DEFAULT_TODO_REVIEW_ROOT = Path("/Users/gaofeng/Library/CloudStorage/OneDrive-个人/ToDo_OneDriveOnlyReview")
+
+
+def _add_nas_mount_contract(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--nas-mount-root", type=Path, default=DEFAULT_NAS_MOUNT_ROOT)
+    parser.add_argument("--expected-nas-filesystem", default="smbfs")
+
+
+def _preflight_nas(args: argparse.Namespace) -> dict:
+    return inspect_mount(
+        args.nas_mount_root,
+        expected_filesystems=(args.expected_nas_filesystem,),
+        require_writable=True,
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -49,6 +64,7 @@ def build_parser() -> argparse.ArgumentParser:
     plan_parser.add_argument("--stage-dir", type=Path, default=DEFAULT_STAGE_DIR)
     plan_parser.add_argument("--swift-source", type=Path, default=DEFAULT_SWIFT_SOURCE)
     plan_parser.add_argument("--plan-id")
+    _add_nas_mount_contract(plan_parser)
 
     apply_parser = subparsers.add_parser("apply")
     apply_parser.add_argument("--plan-dir", required=True)
@@ -56,6 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
     apply_parser.add_argument("--deleted-root", type=Path, default=DEFAULT_DELETED_ROOT)
     apply_parser.add_argument("--state-db", type=Path, default=DEFAULT_STATE_DB)
     apply_parser.add_argument("--swift-source", type=Path, default=DEFAULT_SWIFT_SOURCE)
+    _add_nas_mount_contract(apply_parser)
 
     plan_job_parser = subparsers.add_parser("plan-job")
     plan_job_parser.add_argument("--library-path", type=Path, default=DEFAULT_LIBRARY_PATH)
@@ -67,6 +84,7 @@ def build_parser() -> argparse.ArgumentParser:
     plan_job_parser.add_argument("--stage-dir", type=Path, default=DEFAULT_STAGE_DIR)
     plan_job_parser.add_argument("--swift-source", type=Path, default=DEFAULT_SWIFT_SOURCE)
     plan_job_parser.add_argument("--plan-id")
+    _add_nas_mount_contract(plan_job_parser)
 
     apply_job_parser = subparsers.add_parser("apply-job")
     apply_job_parser.add_argument("--plan-dir", required=True)
@@ -75,6 +93,7 @@ def build_parser() -> argparse.ArgumentParser:
     apply_job_parser.add_argument("--state-db", type=Path, default=DEFAULT_STATE_DB)
     apply_job_parser.add_argument("--status-dir", type=Path, default=DEFAULT_STATUS_DIR)
     apply_job_parser.add_argument("--swift-source", type=Path, default=DEFAULT_SWIFT_SOURCE)
+    _add_nas_mount_contract(apply_job_parser)
 
     prune_parser = subparsers.add_parser("prune-deleted-pool")
     prune_parser.add_argument("--deleted-root", type=Path, default=DEFAULT_DELETED_ROOT)
@@ -83,6 +102,7 @@ def build_parser() -> argparse.ArgumentParser:
     prune_parser.add_argument("--retention-days", type=int, default=30)
     prune_parser.add_argument("--job-id")
     prune_parser.add_argument("--dry-run", action="store_true")
+    _add_nas_mount_contract(prune_parser)
 
     backup_parser = subparsers.add_parser("backup-onedrive")
     backup_parser.add_argument("--nas-root", type=Path, default=DEFAULT_NAS_ROOT)
@@ -92,6 +112,7 @@ def build_parser() -> argparse.ArgumentParser:
     backup_parser.add_argument("--onedrive-root", type=Path, default=DEFAULT_ONEDRIVE_ROOT)
     backup_parser.add_argument("--job-id")
     backup_parser.add_argument("--dry-run", action="store_true")
+    _add_nas_mount_contract(backup_parser)
 
     folder_plan_parser = subparsers.add_parser("folder-plan")
     folder_plan_parser.add_argument("--source-root", type=Path, required=True)
@@ -109,6 +130,7 @@ def build_parser() -> argparse.ArgumentParser:
     google_review_plan_parser.add_argument("--logs-root", type=Path, default=DEFAULT_GOOGLE_REVIEW_LOGS_ROOT)
     google_review_plan_parser.add_argument("--state-db", type=Path, default=DEFAULT_STATE_DB)
     google_review_plan_parser.add_argument("--plan-id")
+    _add_nas_mount_contract(google_review_plan_parser)
 
     google_review_apply_parser = subparsers.add_parser("google-review-apply")
     google_review_apply_parser.add_argument("--plan-dir", required=True)
@@ -139,6 +161,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "plan":
+        _preflight_nas(args)
         plan_dir = run_plan(
             library_path=args.library_path,
             db_path=args.db_path,
@@ -153,6 +176,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "apply":
+        _preflight_nas(args)
         receipt_path = run_apply(
             plan_dir=Path(args.plan_dir),
             nas_root=args.nas_root,
@@ -175,6 +199,8 @@ def main(argv: list[str] | None = None) -> int:
                 swift_source=args.swift_source,
                 status_dir=args.status_dir,
                 plan_id=args.plan_id,
+                nas_mount_root=args.nas_mount_root,
+                expected_nas_filesystem=args.expected_nas_filesystem,
             )
         except Exception as exc:  # noqa: BLE001
             print(str(exc), file=sys.stderr)
@@ -191,6 +217,8 @@ def main(argv: list[str] | None = None) -> int:
                 state_db=args.state_db,
                 swift_source=args.swift_source,
                 status_dir=args.status_dir,
+                nas_mount_root=args.nas_mount_root,
+                expected_nas_filesystem=args.expected_nas_filesystem,
             )
         except Exception as exc:  # noqa: BLE001
             print(str(exc), file=sys.stderr)
@@ -207,6 +235,8 @@ def main(argv: list[str] | None = None) -> int:
                 retention_days=args.retention_days,
                 dry_run=args.dry_run,
                 job_id=args.job_id,
+                nas_mount_root=args.nas_mount_root,
+                expected_nas_filesystem=args.expected_nas_filesystem,
             )
         except Exception as exc:  # noqa: BLE001
             print(str(exc), file=sys.stderr)
@@ -224,6 +254,8 @@ def main(argv: list[str] | None = None) -> int:
                 status_dir=args.status_dir,
                 dry_run=args.dry_run,
                 job_id=args.job_id,
+                nas_mount_root=args.nas_mount_root,
+                expected_nas_filesystem=args.expected_nas_filesystem,
             )
         except Exception as exc:  # noqa: BLE001
             print(str(exc), file=sys.stderr)
@@ -248,6 +280,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "google-review-plan":
+        _preflight_nas(args)
         plan_dir = plan_google_review_rebucket(
             review_root=args.review_root,
             nas_root=args.nas_root,

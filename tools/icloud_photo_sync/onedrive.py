@@ -62,13 +62,14 @@ def run_onedrive_backup(
     status = "success"
     for job in jobs:
         if not job.source_root.exists():
+            status = "failed"
             results.append(
                 {
                     "name": job.name,
                     "source_root": str(job.source_root),
                     "target_root": str(job.target_root),
                     "status": "missing_source",
-                    "exit_code": 0,
+                    "exit_code": 66,
                     "command": [],
                 }
             )

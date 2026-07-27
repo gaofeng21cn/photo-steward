@@ -2,34 +2,31 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-PYTHON_BIN="${PYTHON_BIN:-/Users/gaofeng/.py-global/bin/python3}"
 STATUS_DIR="$ROOT_DIR/state/status"
+source "$ROOT_DIR/scripts/lib/automation_common.sh"
 
-notify() {
-  /usr/bin/osascript -e "display notification \"$1\" with title \"icloud-photo-sync\"" >/dev/null 2>&1 || true
-}
-
-if [[ ! -x "$PYTHON_BIN" ]]; then
-  echo "python runtime missing: $PYTHON_BIN" >&2
+if ! resolve_python; then
+  notify_sync "Python runtime unavailable"
   exit 127
 fi
 
 mkdir -p "$ROOT_DIR/tmp/automation"
 cd "$ROOT_DIR"
 
-"$PYTHON_BIN" -m tools.icloud_photo_sync.cli plan-job "$@"
-exit_code=$?
-
-if [[ $exit_code -ne 0 ]]; then
-  notify "scheduled plan failed"
-  exit $exit_code
+if "$PYTHON_BIN" -m tools.icloud_photo_sync.cli plan-job "$@"; then
+  :
+else
+  exit_code=$?
+  notify_sync "scheduled plan failed"
+  exit "$exit_code"
 fi
 
-PLAN_MESSAGE="$("$PYTHON_BIN" - <<'PY'
+PLAN_MESSAGE="$("$PYTHON_BIN" - "$STATUS_DIR/latest_plan.json" <<'PY'
 from pathlib import Path
 import json
+import sys
 
-path = Path('/Users/gaofeng/workspace/app/icloud-photo-sync/state/status/latest_plan.json')
+path = Path(sys.argv[1])
 if not path.exists():
     raise SystemExit(0)
 payload = json.loads(path.read_text())
@@ -43,7 +40,7 @@ PY
 )"
 
 if [[ -n "$PLAN_MESSAGE" ]]; then
-  notify "$PLAN_MESSAGE"
+  notify_sync "$PLAN_MESSAGE"
 fi
 
 exit 0

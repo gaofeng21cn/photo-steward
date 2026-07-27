@@ -49,25 +49,89 @@ def _collect_tree(root: Path) -> tuple[dict[str, dict], set[str], list[dict]]:
     files: dict[str, dict] = {}
     directories: set[str] = set()
     unresolved: list[dict] = []
+    pending_directories = [root]
 
-    for path in sorted(root.rglob("*")):
-        relative_path = path.relative_to(root).as_posix()
-        if path.name in IGNORED_NAMES:
+    while pending_directories:
+        current_root = pending_directories.pop()
+        try:
+            entries = sorted(os.scandir(current_root), key=lambda entry: entry.name)
+        except FileNotFoundError:
+            if current_root != root:
+                unresolved.append(
+                    {
+                        "path": current_root.relative_to(root).as_posix(),
+                        "reason": "scan_error",
+                        "error_type": "FileNotFoundError",
+                    }
+                )
+            continue
+        except OSError as exc:
+            unresolved.append(
+                {
+                    "path": "." if current_root == root else current_root.relative_to(root).as_posix(),
+                    "reason": "scan_error",
+                    "error_type": type(exc).__name__,
+                    "errno": exc.errno,
+                    "message": str(exc),
+                }
+            )
             continue
 
-        normalized_path = normalize_relative_path(relative_path)
-        if path.is_symlink():
-            link_target = os.readlink(path)
-            entry = {
-                "relative_path": relative_path,
-                "normalized_relative_path": normalized_path,
-                "absolute_path": str(path),
-                "size": len(link_target.encode("utf-8")),
-                "sha256": None,
-                "link_target": link_target,
-                "signature": f"symlink:{link_target}",
-                "entry_type": "symlink",
-            }
+        for directory_entry in entries:
+            if directory_entry.name in IGNORED_NAMES:
+                continue
+            path = Path(directory_entry.path)
+            relative_path = path.relative_to(root).as_posix()
+            normalized_path = normalize_relative_path(relative_path)
+            try:
+                if directory_entry.is_symlink():
+                    link_target = os.readlink(path)
+                    entry = {
+                        "relative_path": relative_path,
+                        "normalized_relative_path": normalized_path,
+                        "absolute_path": str(path),
+                        "size": len(link_target.encode("utf-8")),
+                        "sha256": None,
+                        "link_target": link_target,
+                        "signature": f"symlink:{link_target}",
+                        "entry_type": "symlink",
+                    }
+                elif directory_entry.is_dir(follow_symlinks=False):
+                    directories.add(normalized_path)
+                    pending_directories.append(path)
+                    continue
+                elif directory_entry.is_file(follow_symlinks=False):
+                    file_sha256 = _sha256(path)
+                    entry = {
+                        "relative_path": relative_path,
+                        "normalized_relative_path": normalized_path,
+                        "absolute_path": str(path),
+                        "size": directory_entry.stat(follow_symlinks=False).st_size,
+                        "sha256": file_sha256,
+                        "link_target": None,
+                        "signature": file_sha256,
+                        "entry_type": "file",
+                    }
+                else:
+                    unresolved.append(
+                        {
+                            "path": relative_path,
+                            "reason": "unsupported_entry_type",
+                        }
+                    )
+                    continue
+            except OSError as exc:
+                unresolved.append(
+                    {
+                        "path": relative_path,
+                        "reason": "scan_error",
+                        "error_type": type(exc).__name__,
+                        "errno": exc.errno,
+                        "message": str(exc),
+                    }
+                )
+                continue
+
             if normalized_path in files:
                 unresolved.append(
                     {
@@ -78,42 +142,6 @@ def _collect_tree(root: Path) -> tuple[dict[str, dict], set[str], list[dict]]:
                 )
                 continue
             files[normalized_path] = entry
-            continue
-
-        if path.is_dir():
-            directories.add(normalized_path)
-            continue
-
-        if not path.is_file():
-            unresolved.append(
-                {
-                    "path": relative_path,
-                    "reason": "unsupported_entry_type",
-                }
-            )
-            continue
-
-        file_sha256 = _sha256(path)
-        entry = {
-            "relative_path": relative_path,
-            "normalized_relative_path": normalized_path,
-            "absolute_path": str(path),
-            "size": path.stat().st_size,
-            "sha256": file_sha256,
-            "link_target": None,
-            "signature": file_sha256,
-            "entry_type": "file",
-        }
-        if normalized_path in files:
-            unresolved.append(
-                {
-                    "path": relative_path,
-                    "reason": "duplicate_normalized_path",
-                    "existing_path": files[normalized_path]["relative_path"],
-                }
-            )
-            continue
-        files[normalized_path] = entry
 
     return files, directories, unresolved
 
@@ -210,6 +238,7 @@ def plan_folder_sync(
 
     summary = {
         "plan_id": plan_id,
+        "status": "blocked" if unresolved else "ready",
         "source_root": str(source_root),
         "target_root": str(target_root),
         "review_root": str(review_root),
@@ -283,6 +312,8 @@ def _copy_entry_verified(source_path: Path, target_path: Path, item: dict) -> No
 def apply_folder_plan(plan_dir: Path) -> Path:
     plan_dir = Path(plan_dir)
     summary = json.loads((plan_dir / "plan_summary.json").read_text(encoding="utf-8"))
+    if summary.get("unresolved_count", 0):
+        raise ValueError("目录计划包含未解析项，拒绝执行 apply")
     move_payload = json.loads((plan_dir / "move_to_review.json").read_text(encoding="utf-8"))
     copy_payload = json.loads((plan_dir / "copy_to_target.json").read_text(encoding="utf-8"))
 

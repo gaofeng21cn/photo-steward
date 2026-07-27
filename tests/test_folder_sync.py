@@ -3,6 +3,9 @@ import os
 import unicodedata
 from pathlib import Path
 
+import pytest
+
+import tools.icloud_photo_sync.folder_sync as folder_sync
 from tools.icloud_photo_sync.folder_sync import (
     apply_folder_plan,
     normalize_relative_path,
@@ -126,3 +129,34 @@ def test_plan_folder_sync_keeps_matching_symlinks_without_unresolved(tmp_path: P
     assert summary["copy_count"] == 0
     assert summary["move_count"] == 0
     assert summary["unresolved_count"] == 0
+
+
+def test_plan_records_file_provider_error_and_apply_fails_closed(tmp_path: Path, monkeypatch) -> None:
+    source_root = tmp_path / "source"
+    target_root = tmp_path / "target"
+    review_root = tmp_path / "review"
+    logs_root = tmp_path / "logs"
+    _write_text(source_root / "blocked.cloud", "placeholder")
+    target_root.mkdir()
+
+    def fail_hash(path: Path) -> str:
+        raise OSError(11, "Resource deadlock avoided", path)
+
+    monkeypatch.setattr(folder_sync, "_sha256", fail_hash)
+    plan_dir = plan_folder_sync(
+        source_root=source_root,
+        target_root=target_root,
+        review_root=review_root,
+        logs_root=logs_root,
+        plan_id="todo-plan-blocked",
+    )
+
+    summary = _read_json(plan_dir / "plan_summary.json")
+    unresolved = _read_json(plan_dir / "unresolved.json")["items"]
+
+    assert summary["status"] == "blocked"
+    assert summary["unresolved_count"] == 1
+    assert unresolved[0]["reason"] == "scan_error"
+    assert unresolved[0]["errno"] == 11
+    with pytest.raises(ValueError, match="未解析项"):
+        apply_folder_plan(plan_dir)

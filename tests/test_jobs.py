@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from tools.icloud_photo_sync.jobs import run_plan_job, run_todo_plan_job
+from tools.icloud_photo_sync.jobs import run_onedrive_backup_job, run_plan_job, run_todo_plan_job
 
 
 def test_run_plan_job_writes_success_status_and_overview(tmp_path: Path) -> None:
@@ -26,6 +26,17 @@ def test_run_plan_job_writes_success_status_and_overview(tmp_path: Path) -> None
     def fake_plan_runner(**kwargs):
         return plan_dir
 
+    def fake_mount_probe(path, **kwargs):
+        return {
+            "checked_path": str(path),
+            "mount_point": str(tmp_path),
+            "mounted_from": "//user@nas/home",
+            "filesystem": "smbfs",
+            "options": [],
+            "readable": True,
+            "writable": True,
+        }
+
     returned_plan_dir = run_plan_job(
         library_path=tmp_path / "Photos.photoslibrary",
         db_path=tmp_path / "Photos.sqlite",
@@ -35,7 +46,9 @@ def test_run_plan_job_writes_success_status_and_overview(tmp_path: Path) -> None
         stage_dir=tmp_path / "stage",
         swift_source=tmp_path / "photos_bridge.swift",
         status_dir=status_dir,
+        nas_mount_root=tmp_path,
         plan_runner=fake_plan_runner,
+        mount_probe=fake_mount_probe,
     )
 
     latest = json.loads((status_dir / "latest_plan.json").read_text(encoding="utf-8"))
@@ -45,8 +58,14 @@ def test_run_plan_job_writes_success_status_and_overview(tmp_path: Path) -> None
     assert latest["status"] == "success"
     assert latest["plan_dir"] == str(plan_dir)
     assert latest["summary"]["mirror_count"] == 2
+    assert latest["mount"]["mounted_from"] == "//user@nas/home"
+    assert latest["last_success_at"] == latest["finished_at"]
+    assert latest["consecutive_failures"] == 0
+    assert latest["pending_plan_dir"] == str(plan_dir)
     assert "latest_plan.json" not in overview
     assert "mirror=2" in overview
+    assert (status_dir / "latest_photo_overview.md").exists()
+    assert (status_dir / "latest_todo_overview.md").exists()
 
 
 def test_run_plan_job_writes_failure_status_and_reraises(tmp_path: Path) -> None:
@@ -145,3 +164,79 @@ def test_run_todo_plan_job_writes_failure_status_and_reraises(tmp_path: Path) ->
     assert latest["status"] == "failed"
     assert latest["exit_code"] == 1
     assert "folder sync denied" in latest["message"]
+
+
+def test_failure_preserves_previous_success_and_pending_plan(tmp_path: Path) -> None:
+    status_dir = tmp_path / "status"
+    plan_dir = tmp_path / "logs" / "plan-1"
+    plan_dir.mkdir(parents=True)
+    (plan_dir / "plan_summary.json").write_text(
+        json.dumps({"mirror_count": 1, "delete_count": 0, "unresolved_count": 0}),
+        encoding="utf-8",
+    )
+
+    run_plan_job(
+        library_path=tmp_path / "library",
+        db_path=tmp_path / "db",
+        nas_root=tmp_path / "Photos",
+        logs_root=tmp_path / "logs",
+        state_db=tmp_path / "state.db",
+        stage_dir=tmp_path / "stage",
+        swift_source=tmp_path / "bridge.swift",
+        status_dir=status_dir,
+        plan_runner=lambda **kwargs: plan_dir,
+    )
+
+    def fail_plan(**kwargs):
+        raise RuntimeError("mount disappeared")
+
+    try:
+        run_plan_job(
+            library_path=tmp_path / "library",
+            db_path=tmp_path / "db",
+            nas_root=tmp_path / "Photos",
+            logs_root=tmp_path / "logs",
+            state_db=tmp_path / "state.db",
+            stage_dir=tmp_path / "stage",
+            swift_source=tmp_path / "bridge.swift",
+            status_dir=status_dir,
+            plan_runner=fail_plan,
+        )
+    except RuntimeError:
+        pass
+
+    latest = json.loads((status_dir / "latest_plan.json").read_text(encoding="utf-8"))
+    assert latest["status"] == "failed"
+    assert latest["consecutive_failures"] == 1
+    assert latest["last_success"]["plan_dir"] == str(plan_dir)
+    assert latest["pending_plan_dir"] == str(plan_dir)
+
+
+def test_onedrive_job_raises_for_failed_receipt_after_writing_status(tmp_path: Path) -> None:
+    logs_root = tmp_path / "logs"
+    status_dir = tmp_path / "status"
+    receipt_path = logs_root / "receipt.json"
+    receipt_path.parent.mkdir()
+    receipt_path.write_text(
+        json.dumps({"status": "failed", "results": [{"status": "missing_source"}]}),
+        encoding="utf-8",
+    )
+
+    try:
+        run_onedrive_backup_job(
+            nas_root=tmp_path / "Photos",
+            deleted_root=tmp_path / "Deleted",
+            logs_root=logs_root,
+            onedrive_root=tmp_path / "OneDrive",
+            status_dir=status_dir,
+            backup_runner=lambda **kwargs: receipt_path,
+        )
+    except RuntimeError as exc:
+        assert "incomplete" in str(exc)
+    else:
+        raise AssertionError("expected RuntimeError")
+
+    latest = json.loads((status_dir / "latest_onedrive.json").read_text(encoding="utf-8"))
+    assert latest["status"] == "failed"
+    assert latest["exit_code"] == 1
+    assert latest["receipt_path"] == str(receipt_path)

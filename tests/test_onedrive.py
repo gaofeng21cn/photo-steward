@@ -45,4 +45,32 @@ def test_run_onedrive_backup_writes_receipt_and_uses_rsync_without_delete(tmp_pa
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
     assert receipt["job_id"] == "backup-1"
     assert receipt["job_count"] == 3
+    assert receipt["status"] == "failed"
+    assert [result["exit_code"] for result in receipt["results"][1:]] == [66, 66]
     assert all("--delete" not in command for command in commands)
+
+
+def test_run_onedrive_backup_succeeds_only_when_every_source_exists(tmp_path: Path) -> None:
+    source_roots = [tmp_path / name for name in ("Photos", "Deleted", "Logs")]
+    for source_root in source_roots:
+        source_root.mkdir()
+
+    def fake_runner(command, capture_output, text, check):
+        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+    receipt_path = run_onedrive_backup(
+        jobs=[
+            default_backup_jobs(
+                nas_root=source_roots[0],
+                deleted_root=source_roots[1],
+                logs_root=source_roots[2],
+                onedrive_root=tmp_path / "OneDriveBackup",
+            )[index]
+            for index in range(3)
+        ],
+        logs_root=source_roots[2],
+        command_runner=fake_runner,
+    )
+
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    assert receipt["status"] == "success"
