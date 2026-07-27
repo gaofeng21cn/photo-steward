@@ -15,7 +15,7 @@
     </td>
     <td width="33%" valign="top">
       <strong>操作入口</strong><br/>
-      CLI 维护接口、Codex 专业 Skill 交互入口和 macOS 菜单栏状态控制台；<code>launchd</code> 负责定时发现与备份
+      CLI 维护接口、Codex 专业 Skill 交互入口和 macOS 照片中心控制台；<code>launchd</code> 负责定时发现与备份
     </td>
     <td width="33%" valign="top">
       <strong>安全模型</strong><br/>
@@ -32,7 +32,7 @@
 
 - 确定性服务与 CLI：执行资源识别、计划、复制、日期重定位、隔离和收据
 - Codex 专业 Skill：主要用户入口，负责检查、解释、复核和经确认后执行
-- macOS 菜单栏 App：已实现的轻量状态与审批控制台，不复制同步逻辑
+- macOS App：菜单栏提供快速状态与入口，主控制台提供状态、计划审阅和人工执行；不复制同步逻辑
 
 它是控制面 AI-first、数据面确定性的系统。AI 可以解释差额和组织复核，但覆盖、迁移与删除只接受可重复的元数据、SHA-256、guard 和收据证据。
 
@@ -150,18 +150,22 @@ icloud-photo-sync status --scope photo --format json
 open "$HOME/Applications/iCloud Photo Center.app"
 ```
 
-Skill 和菜单栏 App 都调用同一个 CLI。Skill 负责自然语言检查、计划解释、
-审批组织和显式 Apply；菜单栏 App 显示状态、数据量、进度和待审计划，并在
-确认后调用同一个 `apply-job`。同步规则、身份、SHA-256、guard 和 receipt
-只有底层服务拥有。
+Skill 和 macOS App 都调用同一个 CLI。Skill 负责自然语言检查、计划解释、
+审批组织和显式 Apply；App 的菜单栏入口显示摘要并可打开主控制台。主控制台可
+刷新状态、手工生成计划、审阅待审计划的范围与阻塞项，并在确认后调用同一个
+`apply-job`。同步规则、身份、SHA-256、guard 和 receipt 只有底层服务拥有。
+
+日常使用 App 时，先从菜单栏点击“打开控制台”，再选择“生成计划”。计划会先
+成为待审状态，只有在“待审计划”页核对精确计划、影响范围和未解析项后，才可
+以确认执行 Apply。App 不会绕过这道确认门槛，也不会替代定时任务执行 Apply。
 
 照片相关命令在扫描 Photos 或 NAS 前严格验证 `/Volumes/home` 是可读写的 `smbfs` 挂载，并把 `mounted_from`、挂载点和文件系统写入状态。目录存在但 SMB 未挂载时会 fail-closed，避免写进本地同名目录。
 
 定时任务由 `launchd` 直接启动仓库内的 wrapper，再进入同一 CLI。这样
-Photos.framework bridge 保持稳定的 launchd 执行上下文，不会继承菜单栏 App
-的 TCC 责任进程身份。菜单栏 App 只提供状态、人工计划和显式 Apply，不包含
-第二套同步规则。NAS 预检有有限重试和单次超时，目录遍历错误会 fail-closed
-并写入最新状态。
+Photos.framework bridge 保持稳定的 launchd 执行上下文，不会继承 App 的 TCC
+责任进程身份。自动化只产生计划、执行保留期维护与备份；App 只提供状态、手工
+计划、待审计划审阅和显式 Apply，不包含第二套同步规则。NAS 预检有有限重试和
+单次超时，目录遍历错误会 fail-closed 并写入最新状态。
 
 ## 当前边界
 

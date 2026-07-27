@@ -15,7 +15,7 @@
     </td>
     <td width="33%" valign="top">
       <strong>Interface</strong><br/>
-      A deterministic CLI, a Codex Skill as the conversational entry point, and a macOS menu bar status console; <code>launchd</code> handles discovery and backup
+      A deterministic CLI, a Codex Skill as the conversational entry point, and a macOS photo-center console; <code>launchd</code> handles discovery and backup
     </td>
     <td width="33%" valign="top">
       <strong>Safety Model</strong><br/>
@@ -31,8 +31,8 @@
 Treat this project as the local synchronization service for an iCloud-centered
 photo hub, not as a loose collection of scripts. The deterministic CLI is the
 data plane, the installed Codex Skill is the conversational control plane, and
-the macOS menu bar app provides status and approval without duplicating sync
-logic.
+the macOS app provides a menu bar entry point and a reviewable control console
+without duplicating sync logic.
 
 The system is AI-first at the control plane and deterministic at the data
 plane. AI can explain differences and organize review; overwrite, relocation,
@@ -150,10 +150,16 @@ open "$HOME/Applications/iCloud Photo Center.app"
 ```
 
 The Skill and app invoke the same CLI. The Skill handles conversational
-inspection, plan explanation, review, and explicit approval; the app displays
-health, counts, bytes, progress, and pending plans, then invokes the same
-`apply-job` after confirmation. Sync identity, SHA-256, guards, and receipts
-remain owned by the local service.
+inspection, plan explanation, review, and explicit approval. The app's menu bar
+entry shows a compact summary and opens the main console, where the operator can
+refresh status, create a plan, review its exact scope and blockers, and invoke
+the same `apply-job` only after confirmation. Sync identity, SHA-256, guards,
+and receipts remain owned by the local service.
+
+For normal app use, select "Open Console" from the menu bar, then create a
+plan. The plan remains pending until its exact scope, impact, and unresolved
+items have been reviewed in the plan screen. The app never bypasses this
+confirmation gate or lets scheduled work apply a plan.
 
 Photo jobs verify that `/Volumes/home` is a readable and writable `smbfs` mount
 before scanning Photos or NAS data. The actual source, mount point, and
@@ -161,11 +167,11 @@ filesystem are recorded in status. An unmounted local fallback fails closed.
 
 `launchd` starts the repository wrappers directly, and the wrappers enter the
 same CLI. This keeps the Photos.framework bridge in the stable launchd
-execution context instead of inheriting the menu bar app's TCC responsible
-process identity. The app remains an interactive console for status, manual
-planning, and explicit Apply; it does not own a second synchronization
-implementation. Preflight retries are bounded, and NAS traversal errors fail
-closed into status.
+execution context instead of inheriting the app's TCC responsible process
+identity. Automation only creates plans and runs retention or backup work; the
+app provides status, manual planning, pending-plan review, and explicit Apply
+without owning a second synchronization implementation. Preflight retries are
+bounded, and NAS traversal errors fail closed into status.
 
 ## Current Boundaries
 

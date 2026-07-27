@@ -24,9 +24,10 @@ The intended product has three layers that share one contract:
 1. The local service and CLI own deterministic operations and receipts.
 2. A Codex Skill is the primary conversational interface for inspect, plan,
    explain, review, and explicitly approved apply operations.
-3. An optional macOS menu bar app displays health, mount identity, last attempt,
-   last success, counts, progress, and pending plans. It invokes the service
-   instead of reimplementing synchronization.
+3. An optional macOS app pairs a compact menu bar entry point with a main
+   control-console window. It displays health, mount identity, last attempt,
+   last success, counts, pending plans, and execution state; it invokes the
+   service instead of reimplementing synchronization.
 
 The stable machine-readable interfaces are:
 
@@ -95,7 +96,9 @@ canonical repository:
 
 1. The local service and CLI provide the deterministic data plane.
 2. `skills/icloud-photo-center` is the Codex conversational control plane.
-3. `app/PhotoCenterMenuBar` is a read-mostly macOS menu bar console.
+3. `app/PhotoCenterMenuBar` is a thin macOS interaction layer: the menu bar
+   provides health and quick actions, while the control-console window provides
+   status, plan review, and confirmed Apply.
 
 The remaining architecture work is bounded follow-up, not a missing user
 surface:
@@ -104,5 +107,9 @@ surface:
 5. Relocate generic folder sync and archive historical migration code.
 
 The app remains intentionally thin. It reads the JSON status contract, starts
-the CLI for plan generation and explicit Apply, and does not contain a second
-copy of the synchronization rules.
+the CLI for manual plan generation, and applies only the exact pending plan
+after an in-app confirmation. Its main window separates overview, pending-plan
+review, and activity rather than treating a small menu bar panel as the full
+control surface. `launchd` remains outside the app process and only performs
+scheduled plan discovery, retention, and backup. The app does not contain a
+second copy of the synchronization rules.

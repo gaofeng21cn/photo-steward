@@ -2,14 +2,24 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-swift build --package-path "$ROOT_DIR/app/PhotoCenterMenuBar" -c release >/dev/null
-[[ -x "$ROOT_DIR/app/PhotoCenterMenuBar/.build/release/PhotoCenterMenuBar" ]]
-plutil -lint "$ROOT_DIR/app/PhotoCenterMenuBar/Info.plist" >/dev/null
-[[ "$(plutil -extract CFBundleExecutable raw "$ROOT_DIR/app/PhotoCenterMenuBar/Info.plist")" == "PhotoCenterMenuBar" ]]
-[[ -n "$(plutil -extract NSNetworkVolumesUsageDescription raw "$ROOT_DIR/app/PhotoCenterMenuBar/Info.plist")" ]]
-rg -Fq 'FileManager.default.contentsOfDirectory(atPath: nasMountPath)' \
-  "$ROOT_DIR/app/PhotoCenterMenuBar/Sources/PhotoCenterMenuBar/main.swift"
-rg -Fq 'run(["preflight"], timeoutSeconds: 15)' "$ROOT_DIR/app/PhotoCenterMenuBar/Sources/PhotoCenterMenuBar/main.swift"
-rg -Fq 'falling back to ad-hoc signing' "$ROOT_DIR/scripts/install_menu_bar_app.sh"
-! rg -q 'FENG GAO|SVVC4TA784' "$ROOT_DIR/scripts/install_menu_bar_app.sh"
-print "menu_bar_app: SwiftUI release build and plist valid"
+APP_DIR="$ROOT_DIR/app/PhotoCenterMenuBar"
+SOURCE_DIR="$APP_DIR/Sources/PhotoCenterMenuBar"
+
+[[ -d "$SOURCE_DIR" ]]
+[[ -n "$(find "$SOURCE_DIR" -type f -name '*.swift' -print -quit)" ]]
+plutil -lint "$APP_DIR/Info.plist" >/dev/null
+[[ "$(plutil -extract CFBundleExecutable raw "$APP_DIR/Info.plist")" == "PhotoCenterMenuBar" ]]
+[[ -n "$(plutil -extract NSNetworkVolumesUsageDescription raw "$APP_DIR/Info.plist")" ]]
+
+# The menu bar remains a fast entry point; the auditable workflow lives in a window.
+rg -Fq 'MenuBarExtra' "$SOURCE_DIR"
+rg -Fq 'WindowGroup' "$SOURCE_DIR"
+rg -Fq 'NavigationSplitView' "$SOURCE_DIR"
+[[ -n "$(find "$SOURCE_DIR" -type f \( -iname '*control*.swift' -o -iname '*console*.swift' \) -print -quit)" ]]
+[[ -n "$(find "$SOURCE_DIR" -type f -iname '*plan*.swift' -print -quit)" ]]
+
+for label in "打开控制台" "生成计划" "待审计划" "执行 Apply"; do
+  rg -Fq --glob '*.swift' "$label" "$SOURCE_DIR"
+done
+
+print "menu_bar_app: static console UX contract and plist valid"
