@@ -136,6 +136,8 @@ final class PhotoCenterStore: ObservableObject {
             return "正在检查 NAS 挂载和同步服务"
         case .creatingPlan:
             return "正在检查 NAS 挂载和同步服务"
+        case .applying:
+            return "正在执行已批准计划"
         }
     }
 
@@ -184,13 +186,32 @@ final class PhotoCenterStore: ObservableObject {
     }
 
     func applyPendingPlan() {
-        guard pendingPlan != nil else {
+        guard let pendingPlan else {
             message = "没有待审计划可执行。请先生成并审阅计划。"
             return
         }
 
-        showApplyConfirmation = true
-        message = "计划已就绪，请在确认界面审阅后显式批准。本服务层不会执行 Apply。"
+        guard begin(.applying) else { return }
+        showApplyConfirmation = false
+        guard probeNASAccess() else {
+            finish()
+            return
+        }
+
+        progressDetail = "正在检查 NAS 挂载和同步服务"
+        guard run(["preflight"], timeoutSeconds: 15, completion: { [weak self] output, exitCode in
+            guard let self else { return }
+            guard exitCode == 0 else {
+                self.finish(
+                    "Apply 前的同步 CLI 预检失败：\(Self.outputMessage(output))。请检查 /Volumes/home 挂载和 CLI 安装。"
+                )
+                return
+            }
+            self.runApplyJob(planDir: pendingPlan)
+        }) else {
+            finish()
+            return
+        }
     }
 
     private func runPlanJob() {
@@ -202,6 +223,24 @@ final class PhotoCenterStore: ObservableObject {
                 return
             }
             self.message = "计划已生成，正在读取状态..."
+            self.loadStatus()
+        }) else {
+            finish()
+            return
+        }
+    }
+
+    private func runApplyJob(planDir: String) {
+        progressDetail = "正在执行已批准计划"
+        guard run(["apply-job", "--plan-dir", planDir], completion: { [weak self] output, exitCode in
+            guard let self else { return }
+            guard exitCode == 0 else {
+                self.finish(
+                    "Apply 失败：\(Self.outputMessage(output))。计划仍保留待审状态，请检查最新日志后重试。"
+                )
+                return
+            }
+            self.message = "Apply 已完成，正在读取最新状态..."
             self.loadStatus()
         }) else {
             finish()

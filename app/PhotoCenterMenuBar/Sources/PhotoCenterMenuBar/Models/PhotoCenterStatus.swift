@@ -24,6 +24,7 @@ enum PhotoCenterExecution: Equatable {
     case idle
     case refreshing
     case creatingPlan
+    case applying
 
     var displayName: String {
         switch self {
@@ -33,6 +34,8 @@ enum PhotoCenterExecution: Equatable {
             return "正在读取状态"
         case .creatingPlan:
             return "正在生成计划"
+        case .applying:
+            return "正在执行已批准计划"
         }
     }
 }
@@ -197,6 +200,10 @@ struct PhotoCenterProgressEvent: Decodable {
             return nasFileCount.map { "已扫描 NAS 文件：\(Self.displayCount($0))" }
         case "plan_done":
             return "正在整理同步差额"
+        case "apply_start":
+            return "正在执行已批准计划"
+        case "apply_done":
+            return "Apply 已完成，正在刷新状态"
         default:
             return nil
         }
