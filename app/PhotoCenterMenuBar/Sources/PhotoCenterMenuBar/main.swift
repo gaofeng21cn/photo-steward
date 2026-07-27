@@ -76,7 +76,7 @@ final class PhotoCenterModel: ObservableObject {
     }
 
     func refresh() {
-        run(["preflight"]) { [weak self] output, exitCode in
+        run(["preflight"], timeoutSeconds: 15) { [weak self] output, exitCode in
             guard let self else { return }
             guard exitCode == 0 else {
                 self.message = "NAS 检查失败: \(Self.outputMessage(output))"
@@ -127,7 +127,11 @@ final class PhotoCenterModel: ObservableObject {
         }
     }
 
-    private func run(_ arguments: [String], completion: @escaping (Data, Int32) -> Void) {
+    private func run(
+        _ arguments: [String],
+        timeoutSeconds: TimeInterval? = nil,
+        completion: @escaping (Data, Int32) -> Void
+    ) {
         guard let executable else {
             message = "找不到 icloud-photo-sync，请先运行 install_local.sh"
             return
@@ -142,11 +146,24 @@ final class PhotoCenterModel: ObservableObject {
         do {
             try task.run()
             DispatchQueue.global(qos: .utility).async { [weak self] in
+                let timeout = timeoutSeconds.map { _ in
+                    DispatchWorkItem {
+                        if task.isRunning {
+                            task.terminate()
+                        }
+                    }
+                }
+                if let timeout {
+                    DispatchQueue.global(qos: .utility)
+                        .asyncAfter(deadline: .now() + (timeoutSeconds ?? 0), execute: timeout)
+                }
                 task.waitUntilExit()
+                timeout?.cancel()
                 let data = pipe.fileHandleForReading.readDataToEndOfFile()
                 DispatchQueue.main.async {
                     self?.isBusy = false
-                    completion(data, task.terminationStatus)
+                    let exitCode = task.terminationReason == .uncaughtSignal ? EX_TEMPFAIL : task.terminationStatus
+                    completion(data, exitCode)
                 }
             }
         } catch {
