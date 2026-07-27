@@ -18,4 +18,6 @@ source_text="$(<"$ROOT_DIR/app/PhotoCenterMenuBar/Sources/PhotoCenterMenuBar/mai
 probe_offset="${source_text[(i)try probeNASAccess()]}"
 process_offset="${source_text[(i)let task = Process()]}"
 (( probe_offset > 0 && process_offset > probe_offset ))
+photos_offset="${source_text[(i)photosAccessIsAvailable()]}"
+(( photos_offset > 0 && process_offset > photos_offset ))
 print "launchd_job: app probes NAS before starting the child process"

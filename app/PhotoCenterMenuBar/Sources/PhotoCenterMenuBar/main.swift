@@ -1,12 +1,37 @@
 import AppKit
 import Darwin
 import Foundation
+import Photos
 import SwiftUI
 
 private let nasMountPath = "/Volumes/home"
 
 private func probeNASAccess() throws {
     _ = try FileManager.default.contentsOfDirectory(atPath: nasMountPath)
+}
+
+private func photosAccessIsAvailable() -> Bool {
+    let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+    return status == .authorized || status == .limited
+}
+
+private func requestPhotosAccess(completion: @escaping (Bool) -> Void) {
+    if photosAccessIsAvailable() {
+        completion(true)
+        return
+    }
+
+    let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+    guard status == .notDetermined else {
+        completion(false)
+        return
+    }
+
+    PHPhotoLibrary.requestAuthorization(for: .readWrite) { newStatus in
+        DispatchQueue.main.async {
+            completion(newStatus == .authorized || newStatus == .limited)
+        }
+    }
 }
 
 struct JobSummary: Decodable {
@@ -82,19 +107,26 @@ final class PhotoCenterModel: ObservableObject {
     }
 
     func refresh() {
-        do {
-            try probeNASAccess()
-        } catch {
-            message = "NAS 权限检查失败: \(error.localizedDescription)"
-            return
-        }
-        run(["preflight"], timeoutSeconds: 15) { [weak self] output, exitCode in
+        requestPhotosAccess { [weak self] granted in
             guard let self else { return }
-            guard exitCode == 0 else {
-                self.message = "NAS 检查失败: \(Self.outputMessage(output))"
+            guard granted else {
+                self.message = "Photos 权限未允许，请在系统提示中允许访问照片"
                 return
             }
-            self.loadStatus()
+            do {
+                try probeNASAccess()
+            } catch {
+                self.message = "NAS 权限检查失败: \(error.localizedDescription)"
+                return
+            }
+            self.run(["preflight"], timeoutSeconds: 15) { [weak self] output, exitCode in
+                guard let self else { return }
+                guard exitCode == 0 else {
+                    self.message = "NAS 检查失败: \(Self.outputMessage(output))"
+                    return
+                }
+                self.loadStatus()
+            }
         }
     }
 
@@ -326,6 +358,10 @@ private func runScheduledJobIfRequested() -> Int32? {
         try probeNASAccess()
     } catch {
         FileHandle.standardError.write(Data("NAS access is unavailable: \(error)\n".utf8))
+        return EX_NOPERM
+    }
+    guard photosAccessIsAvailable() else {
+        FileHandle.standardError.write(Data("Photos access is unavailable; open the app and allow Photos access\n".utf8))
         return EX_NOPERM
     }
     guard
