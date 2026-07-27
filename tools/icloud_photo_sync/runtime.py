@@ -91,14 +91,24 @@ def select_primary_media_resources(descriptors: list[PhotosResourceDescriptor]) 
 def _iter_nas_files(nas_root: Path, fingerprinter: FingerprintService) -> list[NasFile]:
     files: list[NasFile] = []
     scanned = 0
-    for dirpath, dirnames, filenames in os.walk(nas_root):
+    def raise_walk_error(error: OSError) -> None:
+        raise RuntimeError(f"NAS scan failed at {error.filename or nas_root}: {error}") from error
+
+    for dirpath, dirnames, filenames in os.walk(nas_root, onerror=raise_walk_error):
         dirnames[:] = sorted(d for d in dirnames if not d.startswith("."))
         for filename in sorted(name for name in filenames if not name.startswith(".")):
             path = Path(dirpath) / filename
-            if not path.is_file():
+            try:
+                is_file = path.is_file()
+            except OSError as exc:
+                raise RuntimeError(f"NAS scan failed at {path}: {exc}") from exc
+            if not is_file:
                 continue
             relative_path = str(path.relative_to(nas_root))
-            fingerprint = fingerprinter.fingerprint_path("nas", relative_path, path)
+            try:
+                fingerprint = fingerprinter.fingerprint_path("nas", relative_path, path)
+            except OSError as exc:
+                raise RuntimeError(f"NAS fingerprint failed at {path}: {exc}") from exc
             files.append(
                 NasFile(
                     relative_path=relative_path,

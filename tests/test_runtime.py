@@ -1,4 +1,5 @@
 import json
+import os
 import sqlite3
 from pathlib import Path
 
@@ -60,6 +61,28 @@ def test_persist_plan_bundle_writes_expected_files(tmp_path: Path) -> None:
     assert summary["delete_count"] == 1
     assert summary["delete_bytes"] == 50
     assert summary["unresolved_count"] == 1
+
+
+def test_iter_nas_files_fails_closed_on_walk_error(tmp_path: Path, monkeypatch) -> None:
+    root = tmp_path / "Photos"
+
+    class Fingerprinter:
+        def fingerprint_path(self, source_kind, resource_key, path):
+            raise AssertionError("fingerprinter should not run")
+
+    def failing_walk(path, onerror=None):
+        assert onerror is not None
+        onerror(PermissionError(13, "Permission denied", os.fspath(path)))
+        yield from ()
+
+    monkeypatch.setattr(runtime.os, "walk", failing_walk)
+    try:
+        runtime._iter_nas_files(root, Fingerprinter())
+    except RuntimeError as exc:
+        assert "NAS scan failed" in str(exc)
+        assert "Permission denied" in str(exc)
+    else:
+        raise AssertionError("expected NAS scan failure")
 
 
 def _prepare_apply_state(tmp_path: Path) -> tuple[Path, Path]:

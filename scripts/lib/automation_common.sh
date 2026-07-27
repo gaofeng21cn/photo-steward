@@ -6,6 +6,7 @@ notify_sync() {
 
 NAS_PREFLIGHT_ATTEMPTS="${NAS_PREFLIGHT_ATTEMPTS:-6}"
 NAS_PREFLIGHT_INTERVAL_SECONDS="${NAS_PREFLIGHT_INTERVAL_SECONDS:-20}"
+NAS_PREFLIGHT_TIMEOUT_SECONDS="${NAS_PREFLIGHT_TIMEOUT_SECONDS:-15}"
 
 resolve_python() {
   local candidate
@@ -35,10 +36,32 @@ resolve_python() {
 
 wait_for_nas_mount() {
   local attempt=1
+  local output
+  local child_pid
+  local elapsed
   while (( attempt <= NAS_PREFLIGHT_ATTEMPTS )); do
-    if "$PYTHON_BIN" -m tools.icloud_photo_sync.cli preflight >/dev/null 2>&1; then
-      return 0
+    output=""
+    elapsed=0
+    "$PYTHON_BIN" -m tools.icloud_photo_sync.cli preflight > >(cat) 2> >(cat >&2) &
+    child_pid=$!
+    while kill -0 "$child_pid" 2>/dev/null; do
+      if (( elapsed >= NAS_PREFLIGHT_TIMEOUT_SECONDS )); then
+        kill "$child_pid" 2>/dev/null || true
+        wait "$child_pid" 2>/dev/null || true
+        output="timed out after ${NAS_PREFLIGHT_TIMEOUT_SECONDS}s"
+        break
+      fi
+      /bin/sleep 1
+      elapsed=$((elapsed + 1))
+    done
+    if [[ -z "$output" ]]; then
+      if wait "$child_pid" > >(cat) 2> >(cat >&2); then
+        return 0
+      else
+        output="exit code $?"
+      fi
     fi
+    echo "NAS preflight attempt ${attempt}/${NAS_PREFLIGHT_ATTEMPTS} failed: ${output}" >&2
     if (( attempt < NAS_PREFLIGHT_ATTEMPTS )); then
       sleep "$NAS_PREFLIGHT_INTERVAL_SECONDS"
     fi
