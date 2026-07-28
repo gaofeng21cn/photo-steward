@@ -65,7 +65,7 @@ path and is a release failure for the public app path.
 
 ## Public Source
 
-Before changing the GitHub repository to public:
+Before treating a source revision as a public release:
 
 1. Push the exact intended `main` commit.
 2. Run `scripts/verify_fresh_clone.sh` from a fresh clone.
@@ -73,7 +73,8 @@ Before changing the GitHub repository to public:
    tree.
 4. Confirm that the README says whether the app is source-only Alpha or a
    notarized distribution.
-5. Make the visibility change and read back the public repository and license.
+5. If the repository is not public yet, make the visibility change and read
+   back the public repository and license.
 
 The Apache-2.0 license does not grant permission to use Apple, iCloud, Photos,
 or Photo Steward trademarks.

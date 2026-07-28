@@ -6,10 +6,9 @@
 <p align="center">iCloud Photos as authority · Review before mutation · Local data stays local</p>
 
 > **Alpha status.** Photo Steward is reusable as a developer-operated local
-> service, but it is not yet a packaged public release. The source currently
-> is licensed under [Apache-2.0](./LICENSE), but the project still lacks a
-> public source distribution, notarized installer, and final trademark
-> clearance.
+> service and the source is published under [Apache-2.0](./LICENSE). It is
+> still Alpha: the macOS app has a signed universal validation build, but no
+> notarized public installer has been released yet.
 
 Photo Steward coordinates a local macOS Photos library, iCloud Photos, and a
 NAS mirror. It creates an auditable plan first, explains the difference, and
@@ -175,22 +174,20 @@ the app. See [`docs/architecture.md`](./docs/architecture.md).
 
 ## Release Readiness
 
-This Alpha can be shared with a trusted technical evaluator who creates their
-own private configuration and understands the checkout-linked installation.
-A public source release and app distribution are separate. The source can be
-published under Apache-2.0 after the fresh-clone privacy checks; the macOS app
-still requires:
+This source release can be inspected and used by a trusted technical
+evaluator who creates their own private configuration and understands the
+checkout-linked installation. Source publication and app distribution are
+separate. The macOS app still requires:
 
 - a versioned installer instead of checkout symlinks;
 - a notarized universal macOS app and end-user permission guidance;
 - final product-name and trademark clearance;
 - an external-user installation and recovery test.
 
-The source is licensed under Apache-2.0. The current checkout-linked installer
-is still an Alpha development path, and an unnotarized app is not a general
-public distribution. iCloud and Photos only describe the supported Apple
-integration; Photo Steward is independent software and is not affiliated with
-Apple.
+The current checkout-linked installer is still an Alpha development path, and
+an unnotarized app is not a general public distribution. iCloud and Photos
+only describe the supported Apple integration; Photo Steward is independent
+software and is not affiliated with Apple.
 
 Release validation is documented in [`docs/release.md`](./docs/release.md).
 
