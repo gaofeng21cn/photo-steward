@@ -34,11 +34,11 @@ import sys
 
 payload = json.load(sys.stdin)
 summary = payload.get("jobs", {}).get("plan", {}).get("summary", {})
-mirror = int(summary.get('mirror_count', 0))
-delete = int(summary.get('delete_count', 0))
-unresolved = int(summary.get('unresolved_count', 0))
+mirror = int(summary.get("mirror_count", 0))
+delete = int(summary.get("delete_count", 0))
+unresolved = int(summary.get("unresolved_count", 0))
 if mirror or delete or unresolved:
-    print(f'plan ready: mirror={mirror} delete={delete} unresolved={unresolved}')
+    print(f"plan ready: mirror={mirror} delete={delete} unresolved={unresolved}")
 ')"
 
 if [[ -n "$PLAN_MESSAGE" ]]; then

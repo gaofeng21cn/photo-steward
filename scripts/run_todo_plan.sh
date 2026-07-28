@@ -28,11 +28,11 @@ import sys
 
 payload = json.load(sys.stdin)
 summary = payload.get("jobs", {}).get("todo_plan", {}).get("summary", {})
-copy_count = int(summary.get('copy_count', 0))
-move_count = int(summary.get('move_count', 0))
-unresolved = int(summary.get('unresolved_count', 0))
+copy_count = int(summary.get("copy_count", 0))
+move_count = int(summary.get("move_count", 0))
+unresolved = int(summary.get("unresolved_count", 0))
 if copy_count or move_count or unresolved:
-    print(f'todo plan ready: copy={copy_count} move={move_count} unresolved={unresolved}')
+    print(f"todo plan ready: copy={copy_count} move={move_count} unresolved={unresolved}")
 ')"
 
 if [[ -n "$PLAN_MESSAGE" ]]; then
