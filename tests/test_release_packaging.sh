@@ -7,6 +7,8 @@ FRESH_CLONE_SCRIPT="$ROOT_DIR/scripts/verify_fresh_clone.sh"
 
 [[ -x "$PACKAGE_SCRIPT" ]]
 [[ -x "$FRESH_CLONE_SCRIPT" ]]
+[[ -x "$ROOT_DIR/scripts/stage_runtime.sh" ]]
+[[ -x "$ROOT_DIR/scripts/sign_runtime.sh" ]]
 [[ -f "$ROOT_DIR/app/PhotoCenterMenuBar/Resources/PhotoSteward.png" ]]
 [[ -f "$ROOT_DIR/app/PhotoCenterMenuBar/Resources/PhotoSteward.icns" ]]
 zsh -n "$PACKAGE_SCRIPT" "$FRESH_CLONE_SCRIPT"
@@ -16,6 +18,10 @@ rg -Fq -- '--notarize' "$PACKAGE_SCRIPT"
 rg -Fq -- 'Developer ID Application' "$PACKAGE_SCRIPT"
 rg -Fq -- 'lipo' "$PACKAGE_SCRIPT"
 rg -Fq -- 'xcrun notarytool submit' "$PACKAGE_SCRIPT"
+rg -Fq -- 'PhotoStewardRuntime' "$PACKAGE_SCRIPT"
+rg -Fq -- 'Python3.framework' "$ROOT_DIR/scripts/stage_runtime.sh"
+rg -Fq -- 'stage_runtime.sh' "$PACKAGE_SCRIPT"
+rg -Fq -- 'sign_runtime.sh' "$PACKAGE_SCRIPT"
 rg -Fq -- 'fresh clone validation passed' "$FRESH_CLONE_SCRIPT"
 
 print "release_packaging: icon and distribution gates present"

@@ -5,10 +5,10 @@
 <p align="center"><strong>Guarded photo mirroring for macOS</strong></p>
 <p align="center">iCloud Photos as authority · Review before mutation · Local data stays local</p>
 
-> **Alpha status.** Photo Steward is reusable as a developer-operated local
-> service and the source is published under [Apache-2.0](./LICENSE). It is
-> still Alpha: the macOS app now has a notarized universal public release, but
-> external-user recovery and final product-name checks remain open.
+> **Public release.** Photo Steward is an independent macOS application
+> published under [Apache-2.0](./LICENSE). The app is self-contained: its
+> release bundle includes the sync runtime, Photos bridge, CLI, Codex Skill,
+> and first-run setup.
 
 Photo Steward coordinates a local macOS Photos library, iCloud Photos, and a
 NAS mirror. It creates an auditable plan first, explains the difference, and
@@ -66,29 +66,29 @@ is [`config/photo-steward.example.toml`](./config/photo-steward.example.toml).
 
 ### Quick start
 
-The current installer links this checkout. It is suitable for technical Alpha
-evaluation, not public software distribution.
+For normal use, download the latest
+[Photo Steward release](https://github.com/gaofeng21cn/photo-steward/releases/latest),
+unzip it, and move `Photo Steward.app` to `~/Applications`. Open the app and
+choose:
+
+1. the local Photos library;
+2. the mounted NAS photo mirror directory.
+
+The first-run wizard then installs the CLI at `~/.local/bin`, installs the
+`photo-steward` Codex Skill under `~/.codex/skills`, writes the private
+configuration, requests Photos permission, and installs the photo-only
+`launchd` jobs. No Python, Swift, repository checkout, or manual TOML editing
+is required.
+
+The source checkout also contains developer-only installers:
 
 ```bash
 ./scripts/install_local.sh
-photo-steward config path
-# Edit the private file printed above.
-photo-steward config validate
-photo-steward preflight
-photo-steward status --scope photo --format json
-```
-
-Install the optional macOS console after configuration validates:
-
-```bash
 ./scripts/install_menu_bar_app.sh
-open "$HOME/Applications/Photo Steward.app"
 ```
 
-For the notarized public App, download the latest
-[Photo Steward release](https://github.com/gaofeng21cn/photo-steward/releases/latest),
-unzip it, and move `Photo Steward.app` to `~/Applications`. The
-checkout-linked installer above is for source-based development and evaluation.
+They are for development and test workflows; they are not required by users of
+the public App.
 
 See [`docs/configuration.md`](./docs/configuration.md) for the schema and
 migration guidance.
@@ -142,6 +142,10 @@ photo-steward apply-job --plan-dir <exact-plan-dir>
 
 Completion requires the resulting receipt plus a fresh JSON status readback.
 
+The App installs the Skill locally; it does not silently install a remote Codex
+plugin, grant Codex permissions, or upload any photo data. A new Codex task
+will discover the Skill after installation.
+
 Configuration precedence is: an operation-specific CLI option, global
 `--config`, `PHOTO_STEWARD_CONFIG`, legacy `ICLOUD_PHOTO_SYNC_CONFIG`, the
 private active-config pointer, then the default private path. `config activate`
@@ -179,18 +183,14 @@ the app. See [`docs/architecture.md`](./docs/architecture.md).
 
 ## Release Readiness
 
-This source release can be inspected and used by a trusted technical
-evaluator who creates their own private configuration. Source publication and
-app distribution are separate. The published macOS App still requires:
+Version `0.4.0` is the integrated-installer release. Its notarized universal
+App contains the runtime required by the CLI, the prebuilt Photos bridge, the
+Codex Skill, and the first-run setup flow. The source checkout remains useful
+for contributors, but a normal user should install only the App.
 
-- final product-name and trademark clearance;
-- an external-user installation and recovery test.
-
-Version `0.3.0` is the first notarized universal App release. The current
-checkout-linked installer remains an Alpha development path, and an
-unnotarized locally built App is not a public distribution. iCloud and Photos
-only describe the supported Apple integration; Photo Steward is independent
-software and is not affiliated with Apple.
+iCloud and Photos describe the supported Apple integration; Photo Steward is
+independent software and is not affiliated with Apple. The Apache-2.0 license
+does not grant permission to use Apple, iCloud, or Photos trademarks.
 
 Release validation is documented in [`docs/release.md`](./docs/release.md).
 
@@ -210,4 +210,5 @@ zsh tests/test_launchd_job.sh
 zsh tests/test_install_local.sh
 zsh tests/test_automation_common.sh
 zsh tests/test_release_packaging.sh
+zsh tests/test_runtime_bundle.sh
 ```

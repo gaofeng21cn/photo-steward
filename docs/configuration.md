@@ -27,6 +27,12 @@ existing file without `--force`. `config validate` checks TOML syntax, required
 fields, path relationships, and the no-secrets policy. `preflight` separately
 checks the real mounted filesystem.
 
+The public App runs the equivalent first-run setup automatically. The user
+selects a Photos library and a directory below a mounted NAS volume; Photo
+Steward detects the mount point and filesystem, derives the quarantine and
+receipt directories, writes the private profile, and validates it. Manual TOML
+editing is only needed for advanced migrations or optional adapters.
+
 The precedence order is:
 
 1. An operation-specific CLI option, such as `--nas-root`.
@@ -94,6 +100,10 @@ cache_dir = "~/Library/Caches/Photo Steward"
 
 The optional `[extensions.todo]` table accepts `source_root`, `target_root`,
 and `review_root`. It is intentionally excluded from the normal photo setup.
+
+The App does not store NAS passwords or cloud tokens. NAS authentication belongs
+to the macOS network-volume mount, and optional backup adapters keep their own
+credentials.
 
 ## Security and migration
 

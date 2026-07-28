@@ -15,6 +15,7 @@ from tools.icloud_photo_sync.config import (
     load_config,
     resolve_config_path,
     write_default_config,
+    write_setup_config,
 )
 
 
@@ -155,3 +156,37 @@ cache_dir = "{tmp_path / 'cache'}"
     )
     with pytest.raises(ConfigError, match="must be below"):
         load_config(outside_path)
+
+
+def test_first_run_setup_writes_private_profile_from_two_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    library = tmp_path / "Photos Library.photoslibrary"
+    nas_mount = tmp_path / "nas"
+    nas_photos = nas_mount / "Photos"
+    library.mkdir()
+    nas_photos.mkdir(parents=True)
+    config_path = tmp_path / "Library" / "Application Support" / "Photo Steward" / "config.toml"
+    monkeypatch.setattr(
+        "tools.icloud_photo_sync.config.default_config_path",
+        lambda home=None: config_path,
+    )
+
+    written = write_setup_config(
+        config_path,
+        library_path=library,
+        nas_photos_path=nas_photos,
+        mount_probe=lambda *args, **kwargs: {
+            "mount_point": str(nas_mount),
+            "filesystem": "smbfs",
+        },
+    )
+
+    assert written == config_path
+    assert config_path.stat().st_mode & 0o777 == 0o600
+    config = load_config(config_path)
+    assert config.library_path == library
+    assert config.mount_root == nas_mount
+    assert config.photos_root == nas_photos
+    assert config.quarantine_root == nas_mount / "PhotoSteward_Quarantine"
+    assert config.receipts_root == nas_mount / "PhotoSteward_Receipts"
+    assert config.expected_filesystem == "smbfs"
+    assert config_path.with_name("active-config-path").read_text(encoding="utf-8") == f"{config_path}\n"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,9 +34,21 @@ class PhotosBridge:
         self.binary_path = self.build_dir / "photos_bridge"
 
     def ensure_binary(self) -> Path:
+        bundled_path = os.environ.get("PHOTO_STEWARD_PHOTOS_BRIDGE")
+        if bundled_path:
+            candidate = Path(bundled_path).expanduser()
+            if candidate.is_file() and candidate.stat().st_mode & 0o111:
+                return candidate
+
         self.build_dir.mkdir(parents=True, exist_ok=True)
         if self.binary_path.exists() and self.binary_path.stat().st_mtime >= self.swift_source.stat().st_mtime:
             return self.binary_path
+
+        if not self.swift_source.exists():
+            raise RuntimeError(
+                "Photos bridge is not available in this installation; "
+                "install the Photo Steward App or use a source checkout with Xcode"
+            )
 
         command = [
             "swiftc",
@@ -45,7 +58,13 @@ class PhotosBridge:
             "-framework",
             "Photos",
         ]
-        proc = subprocess.run(command, capture_output=True, text=True)
+        try:
+            proc = subprocess.run(command, capture_output=True, text=True)
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                "Photos bridge is not bundled and swiftc is unavailable; "
+                "install the Photo Steward App or use a source checkout with Xcode"
+            ) from exc
         if proc.returncode != 0:
             raise RuntimeError(proc.stderr.strip() or proc.stdout.strip() or "swiftc failed")
         return self.binary_path

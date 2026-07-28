@@ -61,6 +61,16 @@ def test_cli_parser_supports_all_supported_subcommands() -> None:
     todo_plan_args = parser.parse_args(["todo-plan"])
     todo_apply_args = parser.parse_args(["todo-apply", "--plan-dir", "/tmp/plan"])
     todo_plan_job_args = parser.parse_args(["todo-plan-job"])
+    setup_args = parser.parse_args(
+        [
+            "config",
+            "setup",
+            "--photos-library",
+            "/tmp/Photos Library.photoslibrary",
+            "--nas-photos",
+            "/Volumes/nas/Photos",
+        ]
+    )
 
     assert config_args.command == "config"
     assert config_args.config_action == "path"
@@ -86,6 +96,8 @@ def test_cli_parser_supports_all_supported_subcommands() -> None:
     assert todo_apply_args.command == "todo-apply"
     assert todo_apply_args.plan_dir == "/tmp/plan"
     assert todo_plan_job_args.command == "todo-plan-job"
+    assert setup_args.config_action == "setup"
+    assert str(setup_args.photos_library) == "/tmp/Photos Library.photoslibrary"
 
 
 def test_status_command_returns_machine_readable_bundle(tmp_path, capsys) -> None:

@@ -6,14 +6,29 @@ AGENT_DIR="$HOME/Library/LaunchAgents"
 LOG_DIR="$HOME/Library/Logs/Photo Steward"
 UID_VALUE="$(id -u)"
 INCLUDE_TODO=false
+PHOTO_ONLY=false
+CORE_ONLY=false
 
-if [[ "${1:-}" == "--include-todo" ]]; then
-  INCLUDE_TODO=true
-elif [[ $# -gt 0 ]]; then
-  echo "usage: $0 [--include-todo]" >&2
-  exit 2
-fi
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --include-todo)
+      INCLUDE_TODO=true
+      ;;
+    --photo-only)
+      PHOTO_ONLY=true
+      ;;
+    --core-only)
+      CORE_ONLY=true
+      ;;
+    *)
+      echo "usage: $0 [--include-todo] [--photo-only] [--core-only]" >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
 
+ROOT_DIR="${PHOTO_STEWARD_RUNTIME_ROOT:-$ROOT_DIR}"
 source "$ROOT_DIR/scripts/lib/automation_common.sh"
 cd "$ROOT_DIR"
 
@@ -28,7 +43,9 @@ photo_cli config validate >/dev/null
 photo_cli config activate >/dev/null
 
 mkdir -p "$AGENT_DIR" "$LOG_DIR"
-"$ROOT_DIR/scripts/install_menu_bar_app.sh" >/dev/null
+if [[ -x "$ROOT_DIR/scripts/install_menu_bar_app.sh" ]]; then
+  "$ROOT_DIR/scripts/install_menu_bar_app.sh" >/dev/null
+fi
 
 # Migrate the previous private label family without embedding its owner name.
 for legacy_plist in "$AGENT_DIR"/*.icloud-photo-sync.*.plist(N); do
@@ -98,8 +115,14 @@ PY
   "$ROOT_DIR/scripts/install_launchd_agents.sh"
 
 TODO_LABEL="com.photosteward.todo.daily"
-/bin/launchctl bootout "gui/$UID_VALUE/$TODO_LABEL" >/dev/null 2>&1 || true
-/bin/rm -f "$AGENT_DIR/$TODO_LABEL.plist"
+if [[ "$CORE_ONLY" == false ]]; then
+  /bin/launchctl bootout "gui/$UID_VALUE/$TODO_LABEL" >/dev/null 2>&1 || true
+  /bin/rm -f "$AGENT_DIR/$TODO_LABEL.plist"
+fi
+if [[ "$PHOTO_ONLY" == true && "$CORE_ONLY" == false ]]; then
+  /bin/launchctl bootout "gui/$UID_VALUE/com.photosteward.onedrive.daily" >/dev/null 2>&1 || true
+  /bin/rm -f "$AGENT_DIR/com.photosteward.onedrive.daily.plist"
+fi
 
 write_plist \
   "com.photosteward.plan.daily" \
@@ -117,15 +140,17 @@ write_plist \
   "$LOG_DIR/deleted-pool.stdout.log" \
   "$LOG_DIR/deleted-pool.stderr.log"
 
-write_plist \
-  "com.photosteward.onedrive.daily" \
-  "$ROOT_DIR/scripts/run_onedrive_backup.sh" \
-  "4" \
-  "15" \
-  "$LOG_DIR/onedrive.stdout.log" \
-  "$LOG_DIR/onedrive.stderr.log"
+if [[ "$PHOTO_ONLY" == false && "$CORE_ONLY" == false ]]; then
+  write_plist \
+    "com.photosteward.onedrive.daily" \
+    "$ROOT_DIR/scripts/run_onedrive_backup.sh" \
+    "4" \
+    "15" \
+    "$LOG_DIR/onedrive.stdout.log" \
+    "$LOG_DIR/onedrive.stderr.log"
+fi
 
-if [[ "$INCLUDE_TODO" == true ]]; then
+if [[ "$INCLUDE_TODO" == true && "$PHOTO_ONLY" == false && "$CORE_ONLY" == false ]]; then
   /bin/chmod +x "$ROOT_DIR/scripts/run_todo_plan.sh"
   write_plist \
     "$TODO_LABEL" \
@@ -138,8 +163,10 @@ fi
 
 printf '%s\n' \
   "$AGENT_DIR/com.photosteward.plan.daily.plist" \
-  "$AGENT_DIR/com.photosteward.deleted-pool.daily.plist" \
-  "$AGENT_DIR/com.photosteward.onedrive.daily.plist"
-if [[ "$INCLUDE_TODO" == true ]]; then
+  "$AGENT_DIR/com.photosteward.deleted-pool.daily.plist"
+if [[ "$PHOTO_ONLY" == false && "$CORE_ONLY" == false ]]; then
+  printf '%s\n' "$AGENT_DIR/com.photosteward.onedrive.daily.plist"
+fi
+if [[ "$INCLUDE_TODO" == true && "$PHOTO_ONLY" == false && "$CORE_ONLY" == false ]]; then
   printf '%s\n' "$AGENT_DIR/$TODO_LABEL.plist"
 fi

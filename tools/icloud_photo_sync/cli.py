@@ -5,7 +5,14 @@ import json
 import sys
 from pathlib import Path
 
-from .config import ConfigError, activate_config, load_config, resolve_config_path, write_default_config
+from .config import (
+    ConfigError,
+    activate_config,
+    load_config,
+    resolve_config_path,
+    write_default_config,
+    write_setup_config,
+)
 from .deleted_pool import prune_deleted_pool
 from .folder_sync import apply_folder_plan, plan_folder_sync
 from .google_review import apply_google_review_rebucket, plan_google_review_rebucket
@@ -175,6 +182,15 @@ def _handle_config_command(args: argparse.Namespace) -> int:
         activate_config(written_path)
         print(written_path)
         return 0
+    if args.config_action == "setup":
+        written_path = write_setup_config(
+            config_path,
+            library_path=args.photos_library,
+            nas_photos_path=args.nas_photos,
+            force=args.force,
+        )
+        print(written_path)
+        return 0
     if args.config_action == "activate":
         load_config(config_path)
         print(activate_config(config_path))
@@ -212,6 +228,13 @@ def build_parser() -> argparse.ArgumentParser:
     config_subparsers.add_parser("path")
     config_init_parser = config_subparsers.add_parser("init")
     config_init_parser.add_argument("--force", action="store_true")
+    config_setup_parser = config_subparsers.add_parser(
+        "setup",
+        help="create a private profile from a Photos library and a mounted NAS photo directory",
+    )
+    config_setup_parser.add_argument("--photos-library", type=Path, required=True)
+    config_setup_parser.add_argument("--nas-photos", type=Path, required=True)
+    config_setup_parser.add_argument("--force", action="store_true")
     config_subparsers.add_parser("activate")
     config_subparsers.add_parser("validate")
 

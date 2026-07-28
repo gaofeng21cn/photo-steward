@@ -1,11 +1,12 @@
 import SwiftUI
 
 struct PhotoCenterApp: App {
-    @StateObject private var store = PhotoCenterStore()
+    @StateObject private var store = PhotoCenterStore(autoRefresh: false)
+    @StateObject private var runtime = PhotoStewardRuntimeController()
 
     var body: some Scene {
         WindowGroup("Photo Steward", id: ControlCenterView.windowID) {
-            ControlCenterView(store: store)
+            rootView
         }
         .defaultSize(width: 960, height: 640)
         .commands {
@@ -25,13 +26,35 @@ struct PhotoCenterApp: App {
         }
 
         MenuBarExtra {
-            MenuBarPopover(store: store)
+            if runtime.isReady {
+                MenuBarPopover(store: store)
+            } else {
+                SetupView(controller: runtime) {
+                    store.refresh()
+                }
+            }
         } label: {
             Image(systemName: store.statusSymbol)
                 .foregroundStyle(store.statusColor)
                 .accessibilityLabel("Photo Steward：\(store.health.displayName)")
         }
         .menuBarExtraStyle(.window)
+    }
+
+    @ViewBuilder
+    private var rootView: some View {
+        if runtime.isReady {
+            ControlCenterView(store: store)
+                .onAppear {
+                    if store.bundle.jobs.isEmpty {
+                        store.refresh()
+                    }
+                }
+        } else {
+            SetupView(controller: runtime) {
+                store.refresh()
+            }
+        }
     }
 }
 

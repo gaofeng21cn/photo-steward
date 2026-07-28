@@ -1,8 +1,7 @@
 # Release
 
-This document separates a public source release from a notarized macOS app
-release. Photo Steward `v0.3.0` is the first public notarized macOS App
-release; the source and the App remain Alpha.
+This document separates a public source release from a notarized macOS App
+release. Photo Steward `v0.4.0` is the integrated-installer App release.
 
 ## Local Validation
 
@@ -11,6 +10,7 @@ Run from a clean checkout:
 ```bash
 python3 -m pytest tests -q
 swift build --package-path app/PhotoCenterMenuBar -c release
+zsh tests/test_runtime_bundle.sh
 zsh scripts/verify_fresh_clone.sh <clone-source>
 ```
 
@@ -21,8 +21,9 @@ privacy markers, Python tests, and Swift build.
 ## Signed Artifact
 
 The release packager builds arm64 and x86_64 binaries, combines them into one
-universal app, includes the Photo Steward icon, and signs the app with
-Developer ID and the hardened runtime:
+universal app, stages a universal Python framework, compiles the Photos bridge
+for both architectures, includes the CLI and Codex Skill, and signs the app
+with Developer ID and the hardened runtime:
 
 ```bash
 scripts/package_release.sh
@@ -33,18 +34,9 @@ distribution artifact.
 
 ## Published App
 
-The current public App release is
-[Photo Steward 0.3.0](https://github.com/gaofeng21cn/photo-steward/releases/tag/v0.3.0).
-Its universal ZIP passed `codesign`, `stapler validate`, and Gatekeeper after
-stapling. The published asset is:
-
-```text
-Photo-Steward-0.3.0-macOS-universal.zip
-sha256: bdae28c4b9a26e7f7c20c2e07ee7db23e153b31502e920ac83b99f6a23e21396
-```
-
-The release is notarized, but the checkout-linked installer remains a
-development and technical-evaluation path.
+The public App release should be read back from the `v0.4.0` GitHub release after
+notarization. The validation artifact is not a public distribution until the
+ticket is stapled and Gatekeeper accepts it.
 
 ## Notarization
 

@@ -277,7 +277,7 @@ final class PhotoCenterStore: ObservableObject {
         completion: @escaping (Data, Int32) -> Void
     ) -> Bool {
         guard let executable = executable else {
-            message = "找不到 Photo Steward 命令。请运行 scripts/install_local.sh 后重试；这不是 Photos 权限问题。"
+            message = "找不到 Photo Steward 运行时。请重新打开正式安装包完成首次设置。"
             return false
         }
 
@@ -293,7 +293,7 @@ final class PhotoCenterStore: ObservableObject {
         do {
             try task.run()
         } catch {
-            message = "无法启动同步 CLI：\(error.localizedDescription)。请检查 CLI 安装；这不是 Photos 权限问题。"
+            message = "无法启动 Photo Steward 运行时：\(error.localizedDescription)。请重新打开 App 完成首次设置。"
             return false
         }
 
@@ -357,7 +357,10 @@ final class PhotoCenterStore: ObservableObject {
     }
 
     private var executable: URL? {
+        let bundledRuntime = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Photo Steward/runtime/current/scripts/icloud-photo-sync")
         let candidates = [
+            bundledRuntime,
             FileManager.default.homeDirectoryForCurrentUser
                 .appendingPathComponent(".local/bin/photo-steward"),
             URL(fileURLWithPath: "/opt/homebrew/bin/photo-steward"),

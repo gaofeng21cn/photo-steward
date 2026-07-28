@@ -7,6 +7,7 @@ INFO_PLIST="$PACKAGE_DIR/Info.plist"
 ICON_FILE="$PACKAGE_DIR/Resources/PhotoSteward.icns"
 DIST_DIR="${PHOTO_STEWARD_DIST_DIR:-$ROOT_DIR/dist}"
 BUILD_ROOT="$ROOT_DIR/tmp/photo-steward-release-build"
+RUNTIME_DIR="$BUILD_ROOT/PhotoStewardRuntime"
 NOTARIZE=false
 NOTARY_PROFILE="${PHOTO_STEWARD_NOTARY_PROFILE:-}"
 SIGNING_IDENTITY="${PHOTO_STEWARD_SIGNING_IDENTITY:-${PHOTO_CENTER_SIGNING_IDENTITY:-}}"
@@ -57,6 +58,7 @@ fi
 
 mkdir -p "$DIST_DIR" "$BUILD_ROOT"
 rm -rf "$APP_DIR" "$ZIP_PATH"
+"$ROOT_DIR/scripts/stage_runtime.sh" "$RUNTIME_DIR" >/dev/null
 
 typeset -a binaries
 for architecture in arm64 x86_64; do
@@ -83,7 +85,11 @@ mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
 /usr/bin/lipo "${binaries[@]}" -create -output "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"
 /bin/cp "$INFO_PLIST" "$APP_DIR/Contents/Info.plist"
 /bin/cp "$ICON_FILE" "$APP_DIR/Contents/Resources/PhotoSteward.icns"
+/usr/bin/ditto "$RUNTIME_DIR" "$APP_DIR/Contents/Resources/PhotoStewardRuntime"
 /bin/chmod +x "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"
+"$ROOT_DIR/scripts/sign_runtime.sh" \
+  "$APP_DIR/Contents/Resources/PhotoStewardRuntime" \
+  "$SIGNING_IDENTITY"
 /usr/bin/codesign --force --options runtime --timestamp --sign "$SIGNING_IDENTITY" "$APP_DIR"
 /usr/bin/codesign --verify --deep --strict "$APP_DIR"
 /usr/bin/lipo -info "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"

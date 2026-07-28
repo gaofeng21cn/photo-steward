@@ -7,6 +7,7 @@ APP_DIR="${HOME}/Applications/${APP_NAME}"
 LEGACY_APP_DIR="${HOME}/Applications/iCloud Photo Center.app"
 BUILD_DIR="$ROOT_DIR/app/PhotoCenterMenuBar/.build/release"
 SIGNING_IDENTITY="${PHOTO_CENTER_SIGNING_IDENTITY:-}"
+RUNTIME_DIR="$ROOT_DIR/tmp/photo-steward-local-runtime"
 
 if [[ -z "$SIGNING_IDENTITY" ]]; then
   SIGNING_IDENTITY="$(
@@ -17,6 +18,7 @@ if [[ -z "$SIGNING_IDENTITY" ]]; then
 fi
 
 swift build --package-path "$ROOT_DIR/app/PhotoCenterMenuBar" -c release
+"$ROOT_DIR/scripts/stage_runtime.sh" "$RUNTIME_DIR" >/dev/null
 
 rm -rf "$APP_DIR"
 if [[ "$LEGACY_APP_DIR" != "$APP_DIR" ]]; then
@@ -27,9 +29,13 @@ mkdir -p "$APP_DIR/Contents/Resources"
 cp "$BUILD_DIR/PhotoCenterMenuBar" "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"
 cp "$ROOT_DIR/app/PhotoCenterMenuBar/Info.plist" "$APP_DIR/Contents/Info.plist"
 cp "$ROOT_DIR/app/PhotoCenterMenuBar/Resources/PhotoSteward.icns" "$APP_DIR/Contents/Resources/PhotoSteward.icns"
+ditto "$RUNTIME_DIR" "$APP_DIR/Contents/Resources/PhotoStewardRuntime"
 chmod +x "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"
 if [[ -n "$SIGNING_IDENTITY" ]] &&
   security find-identity -v -p codesigning | grep -Fq "\"$SIGNING_IDENTITY\""; then
+  "$ROOT_DIR/scripts/sign_runtime.sh" \
+    "$APP_DIR/Contents/Resources/PhotoStewardRuntime" \
+    "$SIGNING_IDENTITY"
   if ! codesign --force --deep --options runtime --sign "$SIGNING_IDENTITY" "$APP_DIR"; then
     echo "Developer ID signing unavailable; falling back to ad-hoc signing" >&2
     codesign --force --deep --sign - "$APP_DIR"

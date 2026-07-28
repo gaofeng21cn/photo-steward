@@ -5,7 +5,9 @@
 <p align="center"><strong>面向 macOS 的受控照片镜像与备份协调器</strong></p>
 <p align="center">iCloud Photos 作为唯一权威来源 · 先审计划再变更 · 数据始终留在本机和 NAS</p>
 
-> **当前为 Alpha。** Photo Steward 已经可以作为技术用户自行部署的本地服务使用，源代码采用 [Apache-2.0 许可证](./LICENSE)并公开发布。macOS App 已经发布经过 Apple 公证的通用架构版本，但外部用户恢复测试和最终产品名称核查仍待完成。
+> **面向公众发布。** Photo Steward 是独立的 macOS 应用，采用
+> [Apache-2.0 许可证](./LICENSE)公开发布。正式 App 已经内置同步运行时、
+> Photos bridge、CLI、Codex Skill 和首次配置向导。
 
 Photo Steward 用来协调本机 macOS Photos 图库、iCloud Photos 与 NAS 镜像。它先生成可审计的计划，解释差异，再在用户明确确认后变更镜像端。它不是云端相册、反向同步工具，也不是通用的照片资产管理系统。
 
@@ -48,27 +50,28 @@ Photo Steward 用来协调本机 macOS Photos 图库、iCloud Photos 与 NAS 镜
 
 ### 快速开始
 
-当前安装方式会把当前仓库软链接到本机，因此它适合技术用户评估 Alpha，不是面向普通用户的正式分发方式。
+日常使用只需要安装正式 App。前往
+[Photo Steward 最新发布页](https://github.com/gaofeng21cn/photo-steward/releases/latest)
+下载 ZIP，解压后将 `Photo Steward.app` 移入 `~/Applications` 并打开。
+
+首次启动时，向导只会要求你选择：
+
+1. 本机 Photos 图库；
+2. 已挂载的 NAS 照片镜像目录。
+
+随后 App 会自动安装内置运行环境、`~/.local/bin` 下的 CLI、`~/.codex/skills`
+下的 `photo-steward` Skill，生成并校验私有配置，请求 Photos 访问权限，并安装
+照片同步的 `launchd` 后台任务。不需要安装 Python、Swift，不需要 clone 仓库，
+也不需要手工编辑 TOML。
+
+仓库中的安装脚本只面向开发和测试：
 
 ```bash
 ./scripts/install_local.sh
-photo-steward config path
-# 编辑上一步输出的私有配置文件。
-photo-steward config validate
-photo-steward preflight
-photo-steward status --scope photo --format json
-```
-
-配置通过校验后，可安装可选的 macOS 控制台：
-
-```bash
 ./scripts/install_menu_bar_app.sh
-open "$HOME/Applications/Photo Steward.app"
 ```
 
-如需安装经过公证的正式 App，请前往
-[Photo Steward 最新发布页](https://github.com/gaofeng21cn/photo-steward/releases/latest)
-下载 ZIP，解压后将 `Photo Steward.app` 移入 `~/Applications`。上面的仓库安装脚本是面向源码开发和技术评估的 Alpha 路径。
+正式 App 的用户不需要执行这些脚本。
 
 字段解释、配置优先级和迁移说明见 [`docs/configuration.md`](./docs/configuration.md)。
 
@@ -113,6 +116,9 @@ photo-steward apply-job --plan-dir <精确计划目录>
 
 只有读取执行回执和最新 JSON 状态后，才能宣称任务完成。
 
+App 安装的是本地 Skill，不会静默安装远程 Codex 插件，不会替用户授予 Codex
+权限，也不会上传照片。安装完成后，新建 Codex 任务即可发现该 Skill。
+
 配置优先级依次为：操作命令中的显式参数、全局 `--config`、`PHOTO_STEWARD_CONFIG`、兼容变量 `ICLOUD_PHOTO_SYNC_CONFIG`、私有活动配置指针、默认私有路径。`config activate` 会更新该私有指针，使 macOS App 与 LaunchAgent 始终使用同一份配置。全局参数必须写在子命令之前：
 
 ```bash
@@ -141,12 +147,13 @@ macOS App 读取默认私有路径。`launchd` 会把选择的配置路径明确
 
 ## 发布准备度
 
-在对方能够自行填写私有配置的前提下，这个 Alpha 源码和已公证 App 可以提供给技术用户评估。正式发布仍需要完成：
+`v0.4.0` 是一体化安装版本。经过公证的通用架构 App 已经内置 CLI 所需运行环境、
+预编译 Photos bridge、Codex Skill 和首次启动配置流程。普通用户只需要安装 App；
+源码仓库和 checkout 软链接安装器保留给贡献者。
 
-- 完成产品名称和商标可用性核查；
-- 在外部用户机器上完成从安装到恢复的完整验证。
-
-源码公开和 App 分发是两个不同阶段。当前源码已经采用 Apache-2.0 并满足公开仓库的隐私检查，`v0.3.0` 已提供经过公证的通用架构 App。依赖 checkout 软链接的安装方式仍是 Alpha 开发路径，未经公证的本地构建 App 不能视为面向公众的正式发行版。文档中出现 iCloud 和 Photos 只是为了说明支持的 Apple 平台能力；Photo Steward 是独立软件，与 Apple 无隶属关系。
+文档中出现 iCloud 和 Photos 只是为了说明支持的 Apple 平台能力；Photo Steward
+是独立软件，与 Apple 无隶属关系。Apache-2.0 许可证不授予使用 Apple、iCloud
+或 Photos 商标的权利。
 
 发布验证流程见 [`docs/release.md`](./docs/release.md)。
 
@@ -164,4 +171,5 @@ zsh tests/test_launchd_job.sh
 zsh tests/test_install_local.sh
 zsh tests/test_automation_common.sh
 zsh tests/test_release_packaging.sh
+zsh tests/test_runtime_bundle.sh
 ```

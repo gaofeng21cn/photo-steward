@@ -23,6 +23,11 @@ NAS_PREFLIGHT_ATTEMPTS="${NAS_PREFLIGHT_ATTEMPTS:-3}"
 NAS_PREFLIGHT_INTERVAL_SECONDS="${NAS_PREFLIGHT_INTERVAL_SECONDS:-10}"
 NAS_PREFLIGHT_TIMEOUT_SECONDS="${NAS_PREFLIGHT_TIMEOUT_SECONDS:-10}"
 
+if [[ -z "${PHOTO_STEWARD_RUNTIME_ROOT:-}" && -x "$ROOT_DIR/bin/python3" ]]; then
+  PHOTO_STEWARD_RUNTIME_ROOT="$ROOT_DIR"
+  export PHOTO_STEWARD_RUNTIME_ROOT
+fi
+
 resolve_python() {
   local candidate
   local -a candidates
@@ -30,6 +35,7 @@ resolve_python() {
     candidates+=("$PYTHON_BIN")
   fi
   candidates+=(
+    "${PHOTO_STEWARD_RUNTIME_ROOT:-}/bin/python3"
     "/opt/homebrew/bin/python3"
     "/usr/local/bin/python3"
     "$HOME/.py-global/bin/python3"
@@ -41,6 +47,10 @@ resolve_python() {
       >/dev/null 2>&1; then
       PYTHON_BIN="$candidate"
       export PYTHON_BIN
+      if [[ -n "${PHOTO_STEWARD_RUNTIME_ROOT:-}" ]]; then
+        export PYTHONPATH="$PHOTO_STEWARD_RUNTIME_ROOT/vendor:$PHOTO_STEWARD_RUNTIME_ROOT${PYTHONPATH:+:$PYTHONPATH}"
+        export PHOTO_STEWARD_PHOTOS_BRIDGE="$PHOTO_STEWARD_RUNTIME_ROOT/bin/photos_bridge"
+      fi
       return 0
     fi
   done
