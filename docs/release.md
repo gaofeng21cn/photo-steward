@@ -1,8 +1,8 @@
 # Release
 
 This document separates a public source release from a notarized macOS app
-release. Photo Steward may be shared as Apache-2.0 source before the app is
-ready for frictionless Gatekeeper installation.
+release. Photo Steward `v0.3.0` is the first public notarized macOS App
+release; the source and the App remain Alpha.
 
 ## Local Validation
 
@@ -30,6 +30,21 @@ scripts/package_release.sh
 
 This produces a signed but unnotarized validation artifact. It is not a public
 distribution artifact.
+
+## Published App
+
+The current public App release is
+[Photo Steward 0.3.0](https://github.com/gaofeng21cn/photo-steward/releases/tag/v0.3.0).
+Its universal ZIP passed `codesign`, `stapler validate`, and Gatekeeper after
+stapling. The published asset is:
+
+```text
+Photo-Steward-0.3.0-macOS-universal.zip
+sha256: bdae28c4b9a26e7f7c20c2e07ee7db23e153b31502e920ac83b99f6a23e21396
+```
+
+The release is notarized, but the checkout-linked installer remains a
+development and technical-evaluation path.
 
 ## Notarization
 

@@ -7,8 +7,8 @@
 
 > **Alpha status.** Photo Steward is reusable as a developer-operated local
 > service and the source is published under [Apache-2.0](./LICENSE). It is
-> still Alpha: the macOS app has a signed universal validation build, but no
-> notarized public installer has been released yet.
+> still Alpha: the macOS app now has a notarized universal public release, but
+> external-user recovery and final product-name checks remain open.
 
 Photo Steward coordinates a local macOS Photos library, iCloud Photos, and a
 NAS mirror. It creates an auditable plan first, explains the difference, and
@@ -84,6 +84,11 @@ Install the optional macOS console after configuration validates:
 ./scripts/install_menu_bar_app.sh
 open "$HOME/Applications/Photo Steward.app"
 ```
+
+For the notarized public App, download the latest
+[Photo Steward release](https://github.com/gaofeng21cn/photo-steward/releases/latest),
+unzip it, and move `Photo Steward.app` to `~/Applications`. The
+checkout-linked installer above is for source-based development and evaluation.
 
 See [`docs/configuration.md`](./docs/configuration.md) for the schema and
 migration guidance.
@@ -175,17 +180,15 @@ the app. See [`docs/architecture.md`](./docs/architecture.md).
 ## Release Readiness
 
 This source release can be inspected and used by a trusted technical
-evaluator who creates their own private configuration and understands the
-checkout-linked installation. Source publication and app distribution are
-separate. The macOS app still requires:
+evaluator who creates their own private configuration. Source publication and
+app distribution are separate. The published macOS App still requires:
 
-- a versioned installer instead of checkout symlinks;
-- a notarized universal macOS app and end-user permission guidance;
 - final product-name and trademark clearance;
 - an external-user installation and recovery test.
 
-The current checkout-linked installer is still an Alpha development path, and
-an unnotarized app is not a general public distribution. iCloud and Photos
+Version `0.3.0` is the first notarized universal App release. The current
+checkout-linked installer remains an Alpha development path, and an
+unnotarized locally built App is not a public distribution. iCloud and Photos
 only describe the supported Apple integration; Photo Steward is independent
 software and is not affiliated with Apple.
 
