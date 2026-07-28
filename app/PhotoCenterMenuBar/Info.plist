@@ -10,6 +10,8 @@
   <string>PhotoCenterMenuBar</string>
   <key>CFBundleName</key>
   <string>PhotoSteward</string>
+  <key>CFBundleIconFile</key>
+  <string>PhotoSteward.icns</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>

@@ -1,0 +1,21 @@
+#!/bin/zsh
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PACKAGE_SCRIPT="$ROOT_DIR/scripts/package_release.sh"
+FRESH_CLONE_SCRIPT="$ROOT_DIR/scripts/verify_fresh_clone.sh"
+
+[[ -x "$PACKAGE_SCRIPT" ]]
+[[ -x "$FRESH_CLONE_SCRIPT" ]]
+[[ -f "$ROOT_DIR/app/PhotoCenterMenuBar/Resources/PhotoSteward.png" ]]
+[[ -f "$ROOT_DIR/app/PhotoCenterMenuBar/Resources/PhotoSteward.icns" ]]
+zsh -n "$PACKAGE_SCRIPT" "$FRESH_CLONE_SCRIPT"
+plutil -extract CFBundleIconFile raw -o - \
+  "$ROOT_DIR/app/PhotoCenterMenuBar/Info.plist" | rg -Fxq 'PhotoSteward.icns'
+rg -Fq -- '--notarize' "$PACKAGE_SCRIPT"
+rg -Fq -- 'Developer ID Application' "$PACKAGE_SCRIPT"
+rg -Fq -- 'lipo' "$PACKAGE_SCRIPT"
+rg -Fq -- 'xcrun notarytool submit' "$PACKAGE_SCRIPT"
+rg -Fq -- 'fresh clone validation passed' "$FRESH_CLONE_SCRIPT"
+
+print "release_packaging: icon and distribution gates present"

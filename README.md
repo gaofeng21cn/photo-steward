@@ -177,19 +177,22 @@ the app. See [`docs/architecture.md`](./docs/architecture.md).
 
 This Alpha can be shared with a trusted technical evaluator who creates their
 own private configuration and understands the checkout-linked installation.
-A public release still requires:
+A public source release and app distribution are separate. The source can be
+published under Apache-2.0 after the fresh-clone privacy checks; the macOS app
+still requires:
 
-- a public source repository and release artifacts built from a fresh clone;
-- a decision about whether to rewrite or retain the existing Git author history;
 - a versioned installer instead of checkout symlinks;
 - a notarized universal macOS app and end-user permission guidance;
 - final product-name and trademark clearance;
 - an external-user installation and recovery test.
 
-The source is licensed under Apache-2.0, but the repository is currently private
-and the project is not yet a generally available software release. iCloud and
-Photos only describe the supported Apple integration; Photo Steward is
-independent software and is not affiliated with Apple.
+The source is licensed under Apache-2.0. The current checkout-linked installer
+is still an Alpha development path, and an unnotarized app is not a general
+public distribution. iCloud and Photos only describe the supported Apple
+integration; Photo Steward is independent software and is not affiliated with
+Apple.
+
+Release validation is documented in [`docs/release.md`](./docs/release.md).
 
 ## License
 
@@ -206,4 +209,5 @@ zsh tests/test_menu_bar_app.sh
 zsh tests/test_launchd_job.sh
 zsh tests/test_install_local.sh
 zsh tests/test_automation_common.sh
+zsh tests/test_release_packaging.sh
 ```

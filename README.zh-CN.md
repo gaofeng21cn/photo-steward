@@ -139,14 +139,14 @@ macOS App 读取默认私有路径。`launchd` 会把选择的配置路径明确
 
 在对方能够自行填写私有配置、理解当前是开发安装的前提下，这个 Alpha 可以提供给可信赖的技术用户评估。真正公开发布仍需要完成：
 
-- 建立可公开访问的源码仓库，并从全新克隆生成不含个人运行态的发行物；
-- 决定是否保留既有 Git 提交作者历史；公开仓库会显示提交作者信息；
 - 用版本化安装器替换依赖仓库路径的软链接；
 - 提供经过公证、支持通用架构的 macOS App 与终端用户权限指引；
 - 完成产品名称和商标可用性核查；
 - 在外部用户机器上完成从安装到恢复的完整验证。
 
-源代码已经采用 Apache-2.0，但仓库当前仍为私有，软件也尚未达到面向公众的正式发布状态。文档中出现 iCloud 和 Photos 只是为了说明支持的 Apple 平台能力；Photo Steward 是独立软件，与 Apple 无隶属关系。
+源码公开和 App 分发是两个不同阶段。源码已经采用 Apache-2.0，可以在完成全新克隆的隐私检查后公开；但当前依赖 checkout 软链接的安装方式仍是 Alpha 开发路径，未经公证的 App 也不能视为面向公众的正式发行版。文档中出现 iCloud 和 Photos 只是为了说明支持的 Apple 平台能力；Photo Steward 是独立软件，与 Apple 无隶属关系。
+
+发布验证流程见 [`docs/release.md`](./docs/release.md)。
 
 ## 许可证
 
@@ -161,4 +161,5 @@ zsh tests/test_menu_bar_app.sh
 zsh tests/test_launchd_job.sh
 zsh tests/test_install_local.sh
 zsh tests/test_automation_common.sh
+zsh tests/test_release_packaging.sh
 ```

@@ -4,4 +4,5 @@ __pycache__/
 state/
 tmp/
 build/
+dist/
 *.egg-info/

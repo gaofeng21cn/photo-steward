@@ -23,8 +23,10 @@ if [[ "$LEGACY_APP_DIR" != "$APP_DIR" ]]; then
   rm -rf "$LEGACY_APP_DIR"
 fi
 mkdir -p "$APP_DIR/Contents/MacOS"
+mkdir -p "$APP_DIR/Contents/Resources"
 cp "$BUILD_DIR/PhotoCenterMenuBar" "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"
 cp "$ROOT_DIR/app/PhotoCenterMenuBar/Info.plist" "$APP_DIR/Contents/Info.plist"
+cp "$ROOT_DIR/app/PhotoCenterMenuBar/Resources/PhotoSteward.icns" "$APP_DIR/Contents/Resources/PhotoSteward.icns"
 chmod +x "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"
 if [[ -n "$SIGNING_IDENTITY" ]] &&
   security find-identity -v -p codesigning | grep -Fq "\"$SIGNING_IDENTITY\""; then
