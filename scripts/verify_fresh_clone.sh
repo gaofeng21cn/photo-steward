@@ -6,6 +6,9 @@ TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/photo-steward-fresh-clone.XXXXXX")"
 trap 'rm -rf "$TMP_ROOT"' EXIT
 CLONE_DIR="$TMP_ROOT/photo-steward"
 
+if [[ "$SOURCE" == /* ]]; then
+  SOURCE="file://$SOURCE"
+fi
 git clone --depth 1 "$SOURCE" "$CLONE_DIR"
 cd "$CLONE_DIR"
 
@@ -16,7 +19,8 @@ cd "$CLONE_DIR"
 [[ ! -e state ]]
 [[ ! -e tmp ]]
 
-if git grep -n -I -E '/Users/gaofeng|/Volumes/home|Gaofeng-Home|照片图库|gaofeng21cn|hotmail\.com' -- ':!LICENSE'; then
+if git grep -n -I -E '/Users/gaofeng|/Volumes/home|Gaofeng-Home|照片图库|gaofeng21cn|hotmail\.com' \
+  -- ':!LICENSE' ':!scripts/verify_fresh_clone.sh'; then
   echo "fresh clone contains a personal/runtime marker" >&2
   exit 1
 fi
