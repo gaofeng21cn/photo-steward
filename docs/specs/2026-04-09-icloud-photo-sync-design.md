@@ -42,7 +42,7 @@
 
 ### NAS 侧
 
-- 扫描 `/Volumes/home/Photos`
+- 扫描 `<nas-mount>/Photos`
 - 按相对路径、大小、mtime/ctime 建立缓存命中条件
 - 只对变更文件重新计算 `SHA-256`
 
@@ -97,7 +97,7 @@
 
 每次 `plan` 固定输出到：
 
-- `/Volumes/home/Photos_SyncLogs/YYYY-MM-DD/<plan_id>/`
+- `<nas-mount>/Photos_SyncLogs/YYYY-MM-DD/<plan_id>/`
 
 目录内至少包含：
 
@@ -120,8 +120,8 @@
 
 删除动作：
 
-- 从 `/Volumes/home/Photos` 移入
-  `/Volumes/home/Photos_DeletedFromICloud/YYYY-MM-DD/<plan_id>/...`
+- 从 `<nas-mount>/Photos` 移入
+  `<nas-mount>/Photos_DeletedFromICloud/YYYY-MM-DD/<plan_id>/...`
 - 保留原相对路径，便于回溯
 
 镜像动作：

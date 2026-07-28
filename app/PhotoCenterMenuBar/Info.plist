@@ -3,19 +3,19 @@
 <plist version="1.0">
 <dict>
   <key>CFBundleDisplayName</key>
-  <string>iCloud Photo Center</string>
+  <string>Photo Steward</string>
   <key>CFBundleIdentifier</key>
-  <string>com.gaofeng.icloud-photo-center</string>
+  <string>com.photosteward.photo-center</string>
   <key>CFBundleExecutable</key>
   <string>PhotoCenterMenuBar</string>
   <key>CFBundleName</key>
-  <string>PhotoCenterMenuBar</string>
+  <string>PhotoSteward</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.2.0</string>
+  <string>0.3.0</string>
   <key>CFBundleVersion</key>
-  <string>2</string>
+  <string>3</string>
   <key>NSNetworkVolumesUsageDescription</key>
   <string>访问 NAS 照片镜像以检查同步状态并执行已批准的计划。</string>
 </dict>

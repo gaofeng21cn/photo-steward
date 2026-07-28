@@ -9,6 +9,10 @@ if ! resolve_python; then
   notify_sync "Python runtime unavailable"
   exit 127
 fi
+if ! resolve_photo_config; then
+  notify_sync "Photo Steward configuration unavailable"
+  exit 2
+fi
 
 if [[ "${1:-}" == "--plan-dir" ]]; then
   shift
@@ -16,35 +20,18 @@ if [[ "${1:-}" == "--plan-dir" ]]; then
     echo "missing value for --plan-dir" >&2
     exit 2
   fi
-  exec "$PYTHON_BIN" -m tools.icloud_photo_sync.cli apply-job --plan-dir "$1"
+  photo_cli apply-job --plan-dir "$1"
+  exit $?
 fi
 
 if [[ "${1:-}" == "--latest" ]]; then
-  PLAN_DIR="$("$PYTHON_BIN" - <<'PY'
-from pathlib import Path
-import json
-
-logs_root = Path("/Volumes/home/Photos_SyncLogs")
-candidates = []
-for summary in logs_root.glob("*/**/plan_summary.json"):
-    try:
-        data = json.loads(summary.read_text())
-    except Exception:
-        continue
-    candidates.append((summary.stat().st_mtime_ns, str(summary.parent), data.get("plan_id", "")))
-
-if not candidates:
-    raise SystemExit(1)
-
-candidates.sort()
-print(candidates[-1][1])
-PY
-)"
+  PLAN_DIR="$(photo_cli latest-plan)"
 if [[ -z "$PLAN_DIR" ]]; then
     echo "no plan found" >&2
     exit 1
   fi
-  exec "$PYTHON_BIN" -m tools.icloud_photo_sync.cli apply-job --plan-dir "$PLAN_DIR"
+  photo_cli apply-job --plan-dir "$PLAN_DIR"
+  exit $?
 fi
 
 echo "usage: $0 --plan-dir <plan_dir> | --latest" >&2

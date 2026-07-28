@@ -22,4 +22,8 @@ for label in "打开控制台" "生成计划" "待审计划" "执行 Apply"; do
   rg -Fq --glob '*.swift' "$label" "$SOURCE_DIR"
 done
 
+store_source="$SOURCE_DIR/Services/PhotoCenterStore.swift"
+[[ "$(<"$store_source")" != *'probeNASAccess'* ]]
+rg -Fq 'run(["preflight"]' "$store_source"
+
 print "menu_bar_app: static console UX contract and plist valid"

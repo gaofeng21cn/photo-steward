@@ -10,6 +10,13 @@ chmod +x "$ROOT_DIR/scripts/icloud-photo-sync"
 ln -sfn "$ROOT_DIR/scripts/icloud-photo-sync" "$BIN_DIR/icloud-photo-sync"
 ln -sfn "$ROOT_DIR/skills/icloud-photo-center" "$SKILL_ROOT/icloud-photo-center"
 
+CONFIG_PATH="$("$BIN_DIR/icloud-photo-sync" config path)"
+if [[ ! -e "$CONFIG_PATH" ]]; then
+  "$BIN_DIR/icloud-photo-sync" config init >/dev/null
+fi
+"$BIN_DIR/icloud-photo-sync" config activate >/dev/null
+
 printf '%s\n' \
   "$BIN_DIR/icloud-photo-sync" \
-  "$SKILL_ROOT/icloud-photo-center"
+  "$SKILL_ROOT/icloud-photo-center" \
+  "$CONFIG_PATH"

@@ -1,0 +1,27 @@
+# Copy this file to the private default location shown by:
+#   icloud-photo-sync config path
+# Then replace the example paths with your own local Photos library and NAS.
+# Do not commit the resulting file.
+schema_version = 1
+
+[photos]
+library_path = "~/Pictures/Photos Library.photoslibrary"
+
+[mirror]
+mount_root = "/Volumes/your-nas"
+photos_root = "/Volumes/your-nas/Photos"
+quarantine_root = "/Volumes/your-nas/PhotoSteward_Quarantine"
+receipts_root = "/Volumes/your-nas/PhotoSteward_Receipts"
+expected_filesystem = "smbfs"
+
+[runtime]
+state_dir = "~/Library/Application Support/Photo Steward/state"
+cache_dir = "~/Library/Caches/Photo Steward"
+# Optional compatibility overrides for an existing state layout:
+# state_db = "~/Library/Application Support/Photo Steward/state/state.sqlite3"
+# status_dir = "~/Library/Application Support/Photo Steward/status"
+# stage_dir = "~/Library/Caches/Photo Steward/stage"
+
+# Optional off-site backup adapter:
+# [backup]
+# onedrive_root = "~/OneDrive/Backup/PhotoSteward"

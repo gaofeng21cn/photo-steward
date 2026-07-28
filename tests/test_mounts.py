@@ -14,14 +14,14 @@ from tools.icloud_photo_sync.mounts import (
 
 MOUNT_OUTPUT = """\
 /dev/disk3s5 on /System/Volumes/Data (apfs, local, journaled)
-//gaofeng@Gaofeng-Home._smb._tcp.local/home on /Volumes/home (smbfs, nodev, nosuid)
+//photo-user@nas-host._smb._tcp.local/photos on /Volumes/photo-nas (smbfs, nodev, nosuid)
 """
 
 
 def test_parse_mount_output_preserves_real_source_and_filesystem() -> None:
     assert parse_mount_output(MOUNT_OUTPUT)[1] == (
-        "//gaofeng@Gaofeng-Home._smb._tcp.local/home",
-        "/Volumes/home",
+        "//photo-user@nas-host._smb._tcp.local/photos",
+        "/Volumes/photo-nas",
         "smbfs",
         ("nodev", "nosuid"),
     )

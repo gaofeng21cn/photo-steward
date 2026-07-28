@@ -29,36 +29,36 @@
   - 原因: 至少 `44` 条已证实属于“同名但不同内容”的双版本冲突，不能再作为删除依据
 - `44` 组双版本冲突已经完成复核并按统一规则收口
   - Photos 相册: `ConflictReview_iCloudVsNAS_DualVersions_2026-04-08`
-  - NAS 复核目录: `/Volumes/home/Photos_ConflictReview_iCloudVsNAS_2026-04-08`
+  - NAS 复核目录: `<nas-mount>/Photos_ConflictReview_iCloudVsNAS_2026-04-08`
   - 你的决策: `统一保留旧 iCloud 版`
   - 执行结果:
-    - NAS 导入的滤镜版 `44` 份已移入 `/Volumes/home/Photos_DeletedFromICloud/2026-04-09/DualVersionConflict_NASImported`
+    - NAS 导入的滤镜版 `44` 份已移入 `<nas-mount>/Photos_DeletedFromICloud/2026-04-09/DualVersionConflict_NASImported`
     - 旧 iCloud 原件已补回 NAS 原路径
     - SHA 校验通过 `44/44`
 - 另有 `89` 条已位于 Photos 的“最近删除”
 - 半自动同步脚本已经正式落地
   - CLI: `python3 -m tools.icloud_photo_sync.cli`
-  - 设计文档: `/Users/gaofeng/workspace/app/icloud-photo-sync/docs/specs/2026-04-09-icloud-photo-sync-design.md`
-  - 实施计划: `/Users/gaofeng/workspace/app/icloud-photo-sync/docs/plans/2026-04-09-icloud-photo-sync.md`
+  - 设计文档: `<home>/workspace/app/icloud-photo-sync/docs/specs/2026-04-09-icloud-photo-sync-design.md`
+  - 实施计划: `<home>/workspace/app/icloud-photo-sync/docs/plans/2026-04-09-icloud-photo-sync.md`
 - 已完成一次正式 `plan -> apply -> verify plan`
-  - `plan4`: `/Volumes/home/Photos_SyncLogs/2026-04-09/icloud-sync-20260409T-plan4`
+  - `plan4`: `<nas-mount>/Photos_SyncLogs/2026-04-09/icloud-sync-20260409T-plan4`
     - `mirror_count = 778`
     - `delete_count = 918`
     - `unresolved_count = 18`
-  - `apply_receipt`: `/Volumes/home/Photos_SyncLogs/2026-04-09/icloud-sync-20260409T-plan4/apply_receipt.json`
+  - `apply_receipt`: `<nas-mount>/Photos_SyncLogs/2026-04-09/icloud-sync-20260409T-plan4/apply_receipt.json`
     - `deleted.moved = 918`
     - `deleted.guard_failed = 0`
     - `mirrored.copied = 778`
     - `mirrored.guard_failed = 0`
-  - `plan5` 回归对账: `/Volumes/home/Photos_SyncLogs/2026-04-09/icloud-sync-20260409T-plan5`
+  - `plan5` 回归对账: `<nas-mount>/Photos_SyncLogs/2026-04-09/icloud-sync-20260409T-plan5`
     - `mirror_count = 0`
     - `delete_count = 0`
     - `unresolved_count = 18`
-  - `plan6`: `/Volumes/home/Photos_SyncLogs/2026-04-09/icloud-sync-20260409T-plan6`
+  - `plan6`: `<nas-mount>/Photos_SyncLogs/2026-04-09/icloud-sync-20260409T-plan6`
     - `mirror_count = 19`
     - `delete_count = 6`
     - `unresolved_count = 0`
-  - `plan7` 最终回归: `/Volumes/home/Photos_SyncLogs/2026-04-09/icloud-sync-20260409T-plan7`
+  - `plan7` 最终回归: `<nas-mount>/Photos_SyncLogs/2026-04-09/icloud-sync-20260409T-plan7`
     - `mirror_count = 0`
     - `delete_count = 0`
     - `unresolved_count = 0`
@@ -71,7 +71,7 @@
   - `2` 条是视频资源被错误选成 `FullSizeRender.jpeg`
 - 上述问题已经在同步脚本中修复
 - `918` 条 NAS-only 项并未硬删
-  - 已移入 `/Volumes/home/Photos_DeletedFromICloud/2026-04-09/icloud-sync-20260409T-plan4`
+  - 已移入 `<nas-mount>/Photos_DeletedFromICloud/2026-04-09/icloud-sync-20260409T-plan4`
   - 可继续人工复核或按保留期清理
 
 当前已经可以宣布 “iCloud Photos 与 NAS 镜像收敛”，但仍需保留两类运营约束：
@@ -216,11 +216,11 @@
 
 建议在 NAS 侧建立以下结构：
 
-- `/Volumes/home/Photos`
+- `<nas-mount>/Photos`
   - 主镜像库
-- `/Volumes/home/Photos_DeletedFromICloud`
+- `<nas-mount>/Photos_DeletedFromICloud`
   - 来自主源删除的待删池
-- `/Volumes/home/Photos_SyncLogs`
+- `<nas-mount>/Photos_SyncLogs`
   - 每次同步的 manifest、动作清单、回执
 
 每次删除同步输出至少三份记录：
@@ -277,7 +277,7 @@
 
 ```bash
 python3 -m tools.icloud_photo_sync.cli plan
-python3 -m tools.icloud_photo_sync.cli apply --plan-dir /Volumes/home/Photos_SyncLogs/YYYY-MM-DD/<plan_id>
+python3 -m tools.icloud_photo_sync.cli apply --plan-dir <nas-mount>/Photos_SyncLogs/YYYY-MM-DD/<plan_id>
 ```
 
 当前脚本行为：

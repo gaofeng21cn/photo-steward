@@ -47,11 +47,11 @@ python3 -m tools.icloud_photo_sync.cli status --scope todo --format markdown
 ```
 
 `preflight` 必须确认 NAS 路径由独立 `smbfs` 挂载承载，并回读
-`mounted_from`、挂载点、文件系统及读写能力。这样 `/Volumes/home`
+`mounted_from`、挂载点、文件系统及读写能力。这样 `<nas-mount>`
 目录存在但 SMB 未挂载时不会误写本地磁盘。
 
 写能力通过挂载根目录中的持久空文件
-`/Volumes/home/.icloud-photo-sync-write-probe` 验证。检查只打开或创建
+`<nas-mount>/.icloud-photo-sync-write-probe` 验证。检查只打开或创建
 该 sentinel，不写入、不截断、不删除，避免每次运行都向 Synology
 `#recycle` 产生临时探针文件。
 
@@ -84,13 +84,13 @@ python3 -m tools.icloud_photo_sync.cli todo-plan-job
 显式指定计划目录：
 
 ```bash
-python3 -m tools.icloud_photo_sync.cli apply-job --plan-dir /Volumes/home/Photos_SyncLogs/YYYY-MM-DD/<plan_id>
+python3 -m tools.icloud_photo_sync.cli apply-job --plan-dir <nas-mount>/Photos_SyncLogs/YYYY-MM-DD/<plan_id>
 ```
 
 或使用包装脚本：
 
 ```bash
-./scripts/run_apply_latest.sh --plan-dir /Volumes/home/Photos_SyncLogs/YYYY-MM-DD/<plan_id>
+./scripts/run_apply_latest.sh --plan-dir <nas-mount>/Photos_SyncLogs/YYYY-MM-DD/<plan_id>
 ./scripts/run_apply_latest.sh --latest
 ```
 
@@ -102,7 +102,7 @@ python3 -m tools.icloud_photo_sync.cli apply-job --plan-dir /Volumes/home/Photos
 
 - 只消费一个明确的计划目录
 - 复制和待删移动都带 guard 校验
-- NAS 删除不会硬删，而是进入 `/Volumes/home/Photos_DeletedFromICloud`
+- NAS 删除不会硬删，而是进入 `<nas-mount>/Photos_DeletedFromICloud`
 
 ### 3. 待删池保留期清理
 
@@ -113,7 +113,7 @@ python3 -m tools.icloud_photo_sync.cli prune-deleted-pool
 
 当前规则：
 
-- 以 `/Volumes/home/Photos_DeletedFromICloud/YYYY-MM-DD/` 一级日期目录为清理粒度
+- 以 `<nas-mount>/Photos_DeletedFromICloud/YYYY-MM-DD/` 一级日期目录为清理粒度
 - 超过 `--retention-days` 的整天目录会被删除
 - dry-run 只生成收据，不做实际删除
 
@@ -126,9 +126,9 @@ python3 -m tools.icloud_photo_sync.cli backup-onedrive
 
 默认备份目标：
 
-- `/Users/gaofeng/OneDrive/Backup/icloud-photo-sync/Photos`
-- `/Users/gaofeng/OneDrive/Backup/icloud-photo-sync/Photos_DeletedFromICloud`
-- `/Users/gaofeng/OneDrive/Backup/icloud-photo-sync/Photos_SyncLogs`
+- `<home>/OneDrive/Backup/icloud-photo-sync/Photos`
+- `<home>/OneDrive/Backup/icloud-photo-sync/Photos_DeletedFromICloud`
+- `<home>/OneDrive/Backup/icloud-photo-sync/Photos_SyncLogs`
 
 当前实现使用 `rsync -a --exclude=.DS_Store`，刻意 **不带 `--delete`**。
 
@@ -147,9 +147,9 @@ python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_l
 
 默认路径：
 
-- 主源：`/Users/gaofeng/Documents/ToDo`
-- 镜像：`/Users/gaofeng/Library/CloudStorage/OneDrive-个人/ToDo`
-- 审核池：`/Users/gaofeng/Library/CloudStorage/OneDrive-个人/ToDo_OneDriveOnlyReview/<plan_id>/`
+- 主源：`<home>/Documents/ToDo`
+- 镜像：`<home>/Library/CloudStorage/OneDrive-Personal/ToDo`
+- 审核池：`<home>/Library/CloudStorage/OneDrive-Personal/ToDo_OneDriveOnlyReview/<plan_id>/`
 - 计划日志：`state/folder_sync_logs/YYYY-MM-DD/<plan_id>/`
 
 行为约束：
@@ -216,22 +216,22 @@ App 仍可运行，但 Network Volumes 权限身份应在解锁后重新签名�
 
 ## 默认照片中心计划
 
-- `com.gaofeng.icloud-photo-sync.plan.daily`
+- `com.photosteward.plan.daily`
   - 时间：每天 `03:15`
   - stdout：`tmp/automation/plan.stdout.log`
   - stderr：`tmp/automation/plan.stderr.log`
-- `com.gaofeng.icloud-photo-sync.deleted-pool.daily`
+- `com.photosteward.deleted-pool.daily`
   - 时间：每天 `04:00`
   - stdout：`tmp/automation/deleted-pool.stdout.log`
   - stderr：`tmp/automation/deleted-pool.stderr.log`
-- `com.gaofeng.icloud-photo-sync.onedrive.daily`
+- `com.photosteward.onedrive.daily`
   - 时间：每天 `04:15`
   - stdout：`tmp/automation/onedrive.stdout.log`
   - stderr：`tmp/automation/onedrive.stderr.log`
 
 启用 ToDo 任务后，额外增加：
 
-- `com.gaofeng.icloud-photo-sync.todo.daily`
+- `com.photosteward.todo.daily`
   - 时间：每天 `04:30`
   - stdout：`tmp/automation/todo.stdout.log`
   - stderr：`tmp/automation/todo.stderr.log`
@@ -251,8 +251,8 @@ App 仍可运行，但 Network Volumes 权限身份应在解锁后重新签名�
 
 运行收据：
 
-- `plan` / `apply`：`/Volumes/home/Photos_SyncLogs/YYYY-MM-DD/<plan_id>/`
-- `deleted-pool` / `onedrive`：`/Volumes/home/Photos_SyncLogs/YYYY-MM-DD/<job_id>.json`
+- `plan` / `apply`：`<nas-mount>/Photos_SyncLogs/YYYY-MM-DD/<plan_id>/`
+- `deleted-pool` / `onedrive`：`<nas-mount>/Photos_SyncLogs/YYYY-MM-DD/<job_id>.json`
 - `todo-plan` / `todo-apply`：`state/folder_sync_logs/YYYY-MM-DD/<plan_id>/`
 
 JSON 状态保留 `last_attempt_at`、`last_success_at`、`consecutive_failures`、
@@ -283,20 +283,20 @@ python3 -m tools.icloud_photo_sync.cli backup-onedrive --dry-run
 
 - `state/status/latest_overview.md`
 - `tmp/automation/*.log`
-- `/Volumes/home/Photos_SyncLogs/YYYY-MM-DD/`
+- `<nas-mount>/Photos_SyncLogs/YYYY-MM-DD/`
 
 如果要直接触发 `launchd`：
 
 ```bash
-launchctl kickstart -k gui/$(id -u)/com.gaofeng.icloud-photo-sync.plan.daily
-launchctl kickstart -k gui/$(id -u)/com.gaofeng.icloud-photo-sync.deleted-pool.daily
-launchctl kickstart -k gui/$(id -u)/com.gaofeng.icloud-photo-sync.onedrive.daily
+launchctl kickstart -k gui/$(id -u)/com.photosteward.plan.daily
+launchctl kickstart -k gui/$(id -u)/com.photosteward.deleted-pool.daily
+launchctl kickstart -k gui/$(id -u)/com.photosteward.onedrive.daily
 ```
 
 如已启用 ToDo 任务，再单独 kickstart：
 
 ```bash
-launchctl kickstart -k gui/$(id -u)/com.gaofeng.icloud-photo-sync.todo.daily
+launchctl kickstart -k gui/$(id -u)/com.photosteward.todo.daily
 ```
 
 ## 边界

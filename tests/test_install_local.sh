@@ -11,4 +11,13 @@ HOME="$TMP_HOME" CODEX_HOME="$TMP_HOME/.codex" "$ROOT_DIR/scripts/install_local.
 [[ "$(readlink "$TMP_HOME/.local/bin/icloud-photo-sync")" == "$ROOT_DIR/scripts/icloud-photo-sync" ]]
 [[ -L "$TMP_HOME/.codex/skills/icloud-photo-center" ]]
 [[ "$(readlink "$TMP_HOME/.codex/skills/icloud-photo-center")" == "$ROOT_DIR/skills/icloud-photo-center" ]]
-print "install_local: CLI and Skill links installed"
+
+CONFIG_PATH="$TMP_HOME/Library/Application Support/Photo Steward/config.toml"
+[[ -f "$CONFIG_PATH" ]]
+[[ "$(stat -f '%Lp' "$CONFIG_PATH")" == "600" ]]
+[[ -f "$TMP_HOME/Library/Application Support/Photo Steward/active-config-path" ]]
+print -r -- "# existing-config-sentinel" >> "$CONFIG_PATH"
+HOME="$TMP_HOME" CODEX_HOME="$TMP_HOME/.codex" "$ROOT_DIR/scripts/install_local.sh" >/dev/null
+rg -Fq '# existing-config-sentinel' "$CONFIG_PATH"
+
+print "install_local: CLI, Skill, and non-destructive private config installed"

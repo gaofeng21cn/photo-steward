@@ -1,7 +1,22 @@
 #!/bin/zsh
 
 notify_sync() {
-  /usr/bin/osascript -e "display notification \"$1\" with title \"icloud-photo-sync\"" >/dev/null 2>&1 || true
+  /usr/bin/osascript -e "display notification \"$1\" with title \"Photo Steward\"" >/dev/null 2>&1 || true
+}
+
+resolve_photo_config() {
+  if [[ -z "${PHOTO_STEWARD_CONFIG:-}" ]]; then
+    if [[ -n "${ICLOUD_PHOTO_SYNC_CONFIG:-}" ]]; then
+      PHOTO_STEWARD_CONFIG="$ICLOUD_PHOTO_SYNC_CONFIG"
+    else
+      PHOTO_STEWARD_CONFIG="$("$PYTHON_BIN" -m tools.icloud_photo_sync.cli config path)" || return 2
+    fi
+  fi
+  export PHOTO_STEWARD_CONFIG
+}
+
+photo_cli() {
+  "$PYTHON_BIN" -m tools.icloud_photo_sync.cli "$@"
 }
 
 NAS_PREFLIGHT_ATTEMPTS="${NAS_PREFLIGHT_ATTEMPTS:-3}"
@@ -46,7 +61,7 @@ wait_for_nas_mount() {
     output=""
     elapsed=0
     stderr_path="$probe_dir/attempt-${attempt}.stderr"
-    "$PYTHON_BIN" -m tools.icloud_photo_sync.cli preflight >"$probe_dir/attempt-${attempt}.stdout" 2>"$stderr_path" &
+    photo_cli preflight >"$probe_dir/attempt-${attempt}.stdout" 2>"$stderr_path" &
     child_pid=$!
     while kill -0 "$child_pid" 2>/dev/null; do
       if (( elapsed >= NAS_PREFLIGHT_TIMEOUT_SECONDS )); then
@@ -85,17 +100,8 @@ record_job_failure() {
   local job_name="$1"
   local message="$2"
   local exit_code="$3"
-  "$PYTHON_BIN" - "$STATUS_DIR" "$job_name" "$message" "$exit_code" <<'PY'
-from pathlib import Path
-import sys
-
-from tools.icloud_photo_sync.jobs import record_job_failure
-
-record_job_failure(
-    status_dir=Path(sys.argv[1]),
-    job_name=sys.argv[2],
-    message=sys.argv[3],
-    exit_code=int(sys.argv[4]),
-)
-PY
+  photo_cli record-failure \
+    --job-name "$job_name" \
+    --message "$message" \
+    --exit-code "$exit_code"
 }

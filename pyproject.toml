@@ -4,10 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "icloud-photo-sync"
-version = "0.2.0"
-description = "Guarded local iCloud Photos mirror service for macOS"
+version = "0.3.0"
+description = "Guarded photo mirroring coordinator for macOS"
+readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = ["tomli>=2.0.1; python_version < '3.11'"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: MacOS X",
+  "Operating System :: MacOS",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+]
+keywords = ["backup", "icloud", "macos", "photos", "sync"]
 
 [project.scripts]
 icloud-photo-sync = "tools.icloud_photo_sync.cli:main"

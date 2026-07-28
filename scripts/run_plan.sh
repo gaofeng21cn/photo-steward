@@ -2,16 +2,17 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-STATUS_DIR="$ROOT_DIR/state/status"
 source "$ROOT_DIR/scripts/lib/automation_common.sh"
+cd "$ROOT_DIR"
 
 if ! resolve_python; then
   notify_sync "Python runtime unavailable"
   exit 127
 fi
-
-mkdir -p "$ROOT_DIR/tmp/automation"
-cd "$ROOT_DIR"
+if ! resolve_photo_config; then
+  notify_sync "Photo Steward configuration unavailable"
+  exit 2
+fi
 
 if ! wait_for_nas_mount; then
   record_job_failure plan "NAS mount preflight failed" 75
@@ -19,7 +20,7 @@ if ! wait_for_nas_mount; then
   exit 75
 fi
 
-if "$PYTHON_BIN" -m tools.icloud_photo_sync.cli plan-job "$@"; then
+if photo_cli plan-job "$@"; then
   :
 else
   exit_code=$?
@@ -27,23 +28,18 @@ else
   exit "$exit_code"
 fi
 
-PLAN_MESSAGE="$("$PYTHON_BIN" - "$STATUS_DIR/latest_plan.json" <<'PY'
-from pathlib import Path
+PLAN_MESSAGE="$(photo_cli status --scope photo --format json | "$PYTHON_BIN" -c '
 import json
 import sys
 
-path = Path(sys.argv[1])
-if not path.exists():
-    raise SystemExit(0)
-payload = json.loads(path.read_text())
-summary = payload.get('summary', {})
+payload = json.load(sys.stdin)
+summary = payload.get("jobs", {}).get("plan", {}).get("summary", {})
 mirror = int(summary.get('mirror_count', 0))
 delete = int(summary.get('delete_count', 0))
 unresolved = int(summary.get('unresolved_count', 0))
 if mirror or delete or unresolved:
     print(f'plan ready: mirror={mirror} delete={delete} unresolved={unresolved}')
-PY
-)"
+')"
 
 if [[ -n "$PLAN_MESSAGE" ]]; then
   notify_sync "$PLAN_MESSAGE"

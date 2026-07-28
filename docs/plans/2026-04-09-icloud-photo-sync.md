@@ -13,10 +13,10 @@
 ### Task 1: 建立正式目录和 CLI 骨架
 
 **Files:**
-- Create: `/Users/gaofeng/workspace/Codex/tools/icloud_photo_sync/__init__.py`
-- Create: `/Users/gaofeng/workspace/Codex/tools/icloud_photo_sync/cli.py`
-- Create: `/Users/gaofeng/workspace/Codex/tools/icloud_photo_sync/models.py`
-- Create: `/Users/gaofeng/workspace/Codex/tests/test_cli_smoke.py`
+- Create: `<home>/workspace/Codex/tools/icloud_photo_sync/__init__.py`
+- Create: `<home>/workspace/Codex/tools/icloud_photo_sync/cli.py`
+- Create: `<home>/workspace/Codex/tools/icloud_photo_sync/models.py`
+- Create: `<home>/workspace/Codex/tests/test_cli_smoke.py`
 
 - [ ] Step 1: 写 CLI smoke test
 - [ ] Step 2: 运行测试确认失败
@@ -26,8 +26,8 @@
 ### Task 2: 实现状态库与缓存模型
 
 **Files:**
-- Create: `/Users/gaofeng/workspace/Codex/tools/icloud_photo_sync/state.py`
-- Create: `/Users/gaofeng/workspace/Codex/tests/test_state_store.py`
+- Create: `<home>/workspace/Codex/tools/icloud_photo_sync/state.py`
+- Create: `<home>/workspace/Codex/tests/test_state_store.py`
 
 - [ ] Step 1: 写缓存复用和 run 记录测试
 - [ ] Step 2: 运行测试确认失败
@@ -37,8 +37,8 @@
 ### Task 3: 实现纯规划核心
 
 **Files:**
-- Create: `/Users/gaofeng/workspace/Codex/tools/icloud_photo_sync/planner.py`
-- Create: `/Users/gaofeng/workspace/Codex/tests/test_planner.py`
+- Create: `<home>/workspace/Codex/tools/icloud_photo_sync/planner.py`
+- Create: `<home>/workspace/Codex/tests/test_planner.py`
 
 - [ ] Step 1: 写“复用已匹配 NAS 文件 / 生成 mirror / 生成 delete”测试
 - [ ] Step 2: 运行测试确认失败
@@ -48,8 +48,8 @@
 ### Task 4: 实现 NAS apply 执行器
 
 **Files:**
-- Create: `/Users/gaofeng/workspace/Codex/tools/icloud_photo_sync/apply.py`
-- Create: `/Users/gaofeng/workspace/Codex/tests/test_apply.py`
+- Create: `<home>/workspace/Codex/tools/icloud_photo_sync/apply.py`
+- Create: `<home>/workspace/Codex/tests/test_apply.py`
 
 - [ ] Step 1: 写“复制到 NAS / 移入待删池 / guard 失败跳过”测试
 - [ ] Step 2: 运行测试确认失败
@@ -59,10 +59,10 @@
 ### Task 5: 实现 Photos 适配层
 
 **Files:**
-- Create: `/Users/gaofeng/workspace/Codex/tools/icloud_photo_sync/photos_db.py`
-- Create: `/Users/gaofeng/workspace/Codex/tools/icloud_photo_sync/photos_bridge.py`
-- Create: `/Users/gaofeng/workspace/Codex/tools/icloud_photo_sync/photos_bridge.swift`
-- Create: `/Users/gaofeng/workspace/Codex/tests/test_photos_db.py`
+- Create: `<home>/workspace/Codex/tools/icloud_photo_sync/photos_db.py`
+- Create: `<home>/workspace/Codex/tools/icloud_photo_sync/photos_bridge.py`
+- Create: `<home>/workspace/Codex/tools/icloud_photo_sync/photos_bridge.swift`
+- Create: `<home>/workspace/Codex/tests/test_photos_db.py`
 
 - [ ] Step 1: 写 Photos DB 枚举与元数据合并测试
 - [ ] Step 2: 运行测试确认失败
@@ -72,9 +72,9 @@
 ### Task 6: 串起真实 `plan` 命令
 
 **Files:**
-- Create: `/Users/gaofeng/workspace/Codex/tools/icloud_photo_sync/runtime.py`
-- Modify: `/Users/gaofeng/workspace/Codex/tools/icloud_photo_sync/cli.py`
-- Create: `/Users/gaofeng/workspace/Codex/tests/test_runtime_plan.py`
+- Create: `<home>/workspace/Codex/tools/icloud_photo_sync/runtime.py`
+- Modify: `<home>/workspace/Codex/tools/icloud_photo_sync/cli.py`
+- Create: `<home>/workspace/Codex/tests/test_runtime_plan.py`
 
 - [ ] Step 1: 写 `plan` 产出目录与文件测试
 - [ ] Step 2: 运行测试确认失败
@@ -84,9 +84,9 @@
 ### Task 7: 串起真实 `apply` 命令
 
 **Files:**
-- Modify: `/Users/gaofeng/workspace/Codex/tools/icloud_photo_sync/cli.py`
-- Modify: `/Users/gaofeng/workspace/Codex/tools/icloud_photo_sync/runtime.py`
-- Create: `/Users/gaofeng/workspace/Codex/tests/test_runtime_apply.py`
+- Modify: `<home>/workspace/Codex/tools/icloud_photo_sync/cli.py`
+- Modify: `<home>/workspace/Codex/tools/icloud_photo_sync/runtime.py`
+- Create: `<home>/workspace/Codex/tests/test_runtime_apply.py`
 
 - [ ] Step 1: 写 `apply` 读取 plan 并输出回执测试
 - [ ] Step 2: 运行测试确认失败
@@ -96,7 +96,7 @@
 ### Task 8: 验证与文档收口
 
 **Files:**
-- Modify: `/Users/gaofeng/workspace/Codex/docs/icloud-photo-authoritative-workflow.md`
+- Modify: `<home>/workspace/Codex/docs/icloud-photo-authoritative-workflow.md`
 
 - [ ] Step 1: 运行完整测试套件
 - [ ] Step 2: 运行一次本地 dry-run 级别的 `plan` 命令验证

@@ -1,211 +1,160 @@
-<p align="center">
-  <a href="./README.md">English</a> | <strong>中文</strong>
-</p>
+<p align="center"><a href="./README.md">English</a> | <strong>中文</strong></p>
 
-<h1 align="center">icloud-photo-sync</h1>
+<h1 align="center">Photo Steward</h1>
 
-<p align="center"><strong>以 iCloud Photos 为权威源的本机照片中台同步服务</strong></p>
-<p align="center">先规划后变更 · 严格内容匹配 · 自动发现与手工 Apply 分离</p>
+<p align="center"><strong>面向 macOS 的受控照片镜像与备份协调器</strong></p>
+<p align="center">iCloud Photos 作为唯一权威来源 · 先审计划再变更 · 数据始终留在本机和 NAS</p>
 
-<table>
-  <tr>
-    <td width="33%" valign="top">
-      <strong>主要用途</strong><br/>
-      把 <code>iCloud Photos</code> 镜像到 NAS，并把像 <code>ToDo</code> 这类 iCloud 主源目录严格对齐到备份云盘，同时避免备份端反过来变成真相源
-    </td>
-    <td width="33%" valign="top">
-      <strong>操作入口</strong><br/>
-      CLI 维护接口、Codex 专业 Skill 交互入口和 macOS 照片中心控制台；<code>launchd</code> 负责定时发现与备份
-    </td>
-    <td width="33%" valign="top">
-      <strong>安全模型</strong><br/>
-      <code>plan</code> 可以自动跑，<code>apply</code> 保持显式触发，NAS 删除先进入待删池而不是直接硬删
-    </td>
-  </tr>
-</table>
+> **当前为 Alpha。** Photo Steward 已经可以作为技术用户自行部署的本地服务使用，但还不是可直接面向公众分发的软件。仓库尚未确定公开许可证、公开发布远端、经过公证的安装包和最终品牌名称。
 
-> 对外，`icloud-photo-sync` 最初是一个 `iCloud Photos -> NAS` 的 local-first 镜像工具。现在它也承载了 `iCloud 主源目录 -> 备份镜像目录` 的双阶段同步能力，例如 `Documents/ToDo -> OneDrive/ToDo`。
+Photo Steward 用来协调本机 macOS Photos 图库、iCloud Photos 与 NAS 镜像。它先生成可审计的计划，解释差异，再在用户明确确认后变更镜像端。它不是云端相册、反向同步工具，也不是通用的照片资产管理系统。
 
-## 项目定位
+`Photo Steward` 是当前采用的面向公众工作名称。为避免破坏既有 CLI 与 Codex 调用，技术标识暂时仍保留为：CLI `icloud-photo-sync`、Codex Skill `icloud-photo-center`。这些标识会在后续独立迁移并完成验证后再统一调整。
 
-用户应把本项目理解为“iCloud 照片中台的本机同步服务”，而不是一组零散脚本：
+## 面向用户
 
-- 确定性服务与 CLI：执行资源识别、计划、复制、日期重定位、隔离和收据
-- Codex 专业 Skill：主要用户入口，负责检查、解释、复核和经确认后执行
-- macOS App：菜单栏提供快速状态与入口，主控制台提供状态、计划审阅和人工执行；不复制同步逻辑
+### 它解决什么问题
 
-它是控制面 AI-first、数据面确定性的系统。AI 可以解释差额和组织复核，但覆盖、迁移与删除只接受可重复的元数据、SHA-256、guard 和收据证据。
+- **iCloud Photos 始终是唯一权威来源。** NAS 和异地备份只是镜像或备份，不会反过来判定图库里什么才是最新版本。
+- **任何变更先有计划。** 定时任务可以发现差异，但不能自行执行照片镜像或删除动作。
+- **只存在于镜像端的文件进入待删池。** 系统将它们移入带日期、可复核的隔离位置，而不是直接永久删除。
+- **必须有成功回执。** 只有精确计划通过安全校验并完成目标端回读后，状态才会更新为成功。
 
-当你的照片管理规则是“`iCloud Photos` 唯一主源、`NAS` 只是镜像、备份工具不参与主判断”时，这个仓库提供的是可复现的文件级同步，而不是一次次手工导出再复制。
+### 日常怎么用
 
-它刻意不做成通用照片管理器，而是明确坚持：
+1. 从菜单栏打开 **Photo Steward**，或在 Codex 中要求检查照片中心。
+2. 刷新状态；需要时生成一份新的同步计划。
+3. 查看数量、数据量、未解决项目，以及准备移入待删池的文件。
+4. 只有当计划完全符合预期时，才确认执行这一个精确计划。
+5. 执行后读取回执和状态总览。
 
-- `iCloud Photos` 是权威目录
-- NAS 是镜像目标，不是日常整理入口
-- `OneDrive` 之类工具可以继续做异地备份，但不负责判断哪份是当前正确状态
-- 像 `ToDo` 这样的工作目录也应复用同样的 `plan -> apply -> 审核池` 机制，而不是人工拖拽同步
+菜单栏 App 是控制台，不是第二套同步逻辑。它、Codex Skill 和 `launchd` 调用的都是同一个确定性 CLI。
 
-## 它解决什么问题
+### 隐私与数据
 
-- 基于当前 Photos 库、NAS 内容和持久化状态生成一次 `plan`
-- 将 iCloud 里新增或缺失于 NAS 的媒体文件复制到镜像库
-- 当内容已从 iCloud 消失时，把 NAS 上的对应项移动到 `/Volumes/home/Photos_DeletedFromICloud`，而不是直接删除
-- 把运行收据统一落到 `/Volumes/home/Photos_SyncLogs/YYYY-MM-DD/<plan_id>/`
-- 允许定时自动发现变化，但不把 NAS 变更权限直接交给定时任务
-- 针对主源目录生成严格的 `folder-plan`，并把镜像侧残留内容先移入审核池，再复制主源视图
+仓库只包含源代码、测试、公共示例和文档。以下内容只应保留在用户自己的 Mac 或 NAS，绝不能提交到 Git：
 
-## 快速开始
+- 真实 Photos 图库、导出的照片、清单、SHA-256 索引、计划、执行回执、SQLite 状态库和日志；
+- NAS 主机名、挂载路径、账号名称和本机绝对路径；
+- 云端令牌、密码、签名证书和开发者凭据。
 
-在仓库根目录执行：
+私有配置文件默认位于：
 
-```bash
-python3 -m tools.icloud_photo_sync.cli preflight
-python3 -m tools.icloud_photo_sync.cli status --scope photo
-python3 -m tools.icloud_photo_sync.cli plan
-python3 -m tools.icloud_photo_sync.cli apply --plan-dir /Volumes/home/Photos_SyncLogs/YYYY-MM-DD/<plan_id>
-python3 -m tools.icloud_photo_sync.cli plan-job
-python3 -m tools.icloud_photo_sync.cli todo-plan-job
-python3 -m tools.icloud_photo_sync.cli prune-deleted-pool --dry-run
-python3 -m tools.icloud_photo_sync.cli backup-onedrive --dry-run
-python3 -m tools.icloud_photo_sync.cli todo-plan
-python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_logs/YYYY-MM-DD/<plan_id>
+```text
+~/Library/Application Support/Photo Steward/config.toml
 ```
 
-常用包装脚本：
+该文件会以 `0600` 权限创建。密码和令牌应交给 macOS Keychain、NAS 挂载机制或备份工具自己的凭据存储，而不是写进配置文件。可提交的脱敏示例见 [`config/photo-steward.example.toml`](./config/photo-steward.example.toml)。
 
-```bash
-./scripts/run_plan.sh
-./scripts/run_todo_plan.sh
-./scripts/run_apply_latest.sh --plan-dir /Volumes/home/Photos_SyncLogs/YYYY-MM-DD/<plan_id>
-./scripts/run_apply_latest.sh --latest
-./scripts/run_deleted_pool_retention.sh --dry-run
-./scripts/run_onedrive_backup.sh --dry-run
-./scripts/install_launchd_agents.sh
-./scripts/install_local.sh
-./scripts/install_menu_bar_app.sh
-```
+### 快速开始
 
-## 运行期布局
-
-仓库内只保留稳定、可追踪的内容：
-
-- `tools/icloud_photo_sync/`：源码
-- `tests/`：测试
-- `docs/`：操作文档
-
-运行期状态不作为 Git 事实的一部分：
-
-- 状态库：`state/icloud-photo-sync/state.sqlite3`
-- 最新作业状态：`state/status/latest_*.json`
-- 最新总览：`state/status/latest_overview.md`
-- 照片状态总览：`state/status/latest_photo_overview.md`
-- ToDo 状态总览：`state/status/latest_todo_overview.md`
-- 临时 staging：`tmp/icloud_photo_sync_stage`
-- 同步日志：`/Volumes/home/Photos_SyncLogs`
-- 通用目录同步日志：`state/folder_sync_logs`
-- NAS 待删池：`/Volumes/home/Photos_DeletedFromICloud`
-- OneDrive 备份根目录：`/Users/gaofeng/OneDrive/Backup/icloud-photo-sync`
-- ToDo 审核池：`/Users/gaofeng/Library/CloudStorage/OneDrive-个人/ToDo_OneDriveOnlyReview/<plan_id>/`
-
-## 自动化模型
-
-推荐的自动化策略是分层且非对称的：
-
-- 自动执行 `plan-job`
-- 自动执行待删池保留期清理
-- 自动执行从 NAS 到 OneDrive 的备份
-- `apply` 保持手工触发
-- 在真正修改 NAS 前，先审阅生成的计划目录或最新一次计划结果
-- ToDo 计划发现通过 `scripts/install_launchd_todo_agent.sh` 显式启用，与照片中心状态分开
-
-这样可以让“发现变化”足够便宜，同时给复制和删除移动保留一道硬门槛。
-
-`./scripts/install_launchd_agents.sh` 默认安装三条照片中心 `launchd` 任务：
-
-- `com.gaofeng.icloud-photo-sync.plan.daily`：`03:15`
-- `com.gaofeng.icloud-photo-sync.deleted-pool.daily`：`04:00`
-- `com.gaofeng.icloud-photo-sync.onedrive.daily`：`04:15`
-
-如需 ToDo 计划发现，再单独执行：
-
-```bash
-./scripts/install_launchd_todo_agent.sh
-```
-
-ToDo 任务的 stdout/stderr 也写到 `tmp/automation/`，但不属于照片中心健康状态。
-
-## 三层用户入口
-
-安装本机 CLI 和 Codex Skill：
+当前安装方式会把当前仓库软链接到本机，因此它适合技术用户评估 Alpha，不是面向普通用户的正式分发方式。
 
 ```bash
 ./scripts/install_local.sh
+icloud-photo-sync config path
+# 编辑上一步输出的私有配置文件。
+icloud-photo-sync config validate
+icloud-photo-sync preflight
 icloud-photo-sync status --scope photo --format json
 ```
 
-安装菜单栏控制台：
+配置通过校验后，可安装可选的 macOS 控制台：
 
 ```bash
 ./scripts/install_menu_bar_app.sh
-open "$HOME/Applications/iCloud Photo Center.app"
+open "$HOME/Applications/Photo Steward.app"
 ```
 
-Skill 和 macOS App 都调用同一个 CLI。Skill 负责自然语言检查、计划解释、
-审批组织和显式 Apply；App 的菜单栏入口显示摘要并可打开主控制台。主控制台可
-刷新状态、手工生成计划、审阅待审计划的范围与阻塞项，并在确认后调用同一个
-`apply-job`。同步规则、身份、SHA-256、guard 和 receipt 只有底层服务拥有。
+字段解释、配置优先级和迁移说明见 [`docs/configuration.md`](./docs/configuration.md)。
 
-日常使用 App 时，先从菜单栏点击“打开控制台”，再选择“生成计划”。计划会先
-成为待审状态，只有在“待审计划”页核对精确计划、影响范围和未解析项后，才可
-以确认执行 Apply。App 不会绕过这道确认门槛，也不会替代定时任务执行 Apply。
+## 它如何工作
 
-照片相关命令在扫描 Photos 或 NAS 前严格验证 `/Volumes/home` 是可读写的 `smbfs` 挂载，并把 `mounted_from`、挂载点和文件系统写入状态。目录存在但 SMB 未挂载时会 fail-closed，避免写进本地同名目录。
+```text
+iCloud Photos / 本机 Photos 图库
+              |
+              v
+       确定性清单与 SHA-256 匹配
+              |
+              v
+          生成受控计划
+              |
+              +--> 在 Codex 或 macOS 控制台中审阅
+              |
+              v
+       明确确认后执行，并回读目标端
+              |
+              v
+      NAS 镜像、待删池与执行回执
+```
 
-定时任务由 `launchd` 直接启动仓库内的 wrapper，再进入同一 CLI。这样
-Photos.framework bridge 保持稳定的 launchd 执行上下文，不会继承 App 的 TCC
-责任进程身份。自动化只产生计划、执行保留期维护与备份；App 只提供状态、手工
-计划、待审计划审阅和显式 Apply，不包含第二套同步规则。NAS 预检有有限重试和
-单次超时，目录遍历错误会 fail-closed 并写入最新状态。
-
-## 当前边界
-
-- 当前实现围绕 macOS Photos library 和仓库内置的 Swift bridge 构建。
-- 匹配逻辑是严格内容导向的，不使用模糊启发式去合并“看起来像”的近重复项。
-- NAS 删除采用可审计的待删池移动机制，而不是立即 destructive remove。
-- 通用目录同步同样坚持主源权威：镜像侧多余内容先移入审核池，再复制主源内容。
-- 这个仓库是同步工具，不是通用 DAM、云后端或图库 UI。
+只要存在未解决项目，`apply` 就会被阻止。日期修正会被视为一次重定位：系统先在新日期目录生成镜像项，再在同一份受控计划中把旧位置移入待删池。直接复制文件或凭肉眼判断重复，不能替代这个流程。
 
 ## 面向 Agent
 
-建议通过 CLI 和包装脚本操作本仓库，而不是自己重写同步逻辑。
+Codex Skill 是对话入口；确定性的 CLI 才拥有配置解析、计划、安全校验、执行和回执。不要在提示词、Skill 脚本或 GUI 中另写一套同步逻辑。
 
-典型 Agent 任务：
+```bash
+icloud-photo-sync config validate
+icloud-photo-sync preflight
+icloud-photo-sync status --scope photo --format json
+icloud-photo-sync plan-job
+```
 
-- 执行 `plan`
-- 执行 `plan-job` 并检查 `state/status/latest_plan.json`
-- 执行 `todo-plan-job` 并检查 `state/status/latest_todo_plan.json`
-- 检查生成的收据与计划目录
-- 对明确选定的 `plan_dir` 执行 `apply`
-- 执行 `todo-plan`，对齐 `/Users/gaofeng/Documents/ToDo` 与 `OneDrive/ToDo`
-- 检查 `state/folder_sync_logs/YYYY-MM-DD/<plan_id>/`
-- 只对已审阅的目录计划执行 `todo-apply`
-- 以 dry-run 方式执行 `prune-deleted-pool` 或 `backup-onedrive`
-- 安装或审计整套定时自动化
+执行计划前，Agent 必须读取 `plan_summary.json` 与相关清单，解释 `mirror_count`、`delete_count`、`unresolved_count`、总数据量和待删池影响，并取得用户对精确计划目录的明确同意。随后只能执行：
 
-## 文档
+```bash
+icloud-photo-sync apply-job --plan-dir <精确计划目录>
+```
 
-- [自动化说明](docs/automation.md)
-- [产品与架构](docs/architecture.md)
-- [主源工作流说明](docs/icloud-photo-authoritative-workflow.md)
-- [设计文档](docs/specs/2026-04-09-icloud-photo-sync-design.md)
-- [实施计划](docs/plans/2026-04-09-icloud-photo-sync.md)
-- [ToDo 主源对齐设计](docs/specs/2026-04-10-icloud-todo-onedrive-design.md)
-- [ToDo 主源对齐实施计划](docs/plans/2026-04-10-icloud-todo-onedrive.md)
+只有读取执行回执和最新 JSON 状态后，才能宣称任务完成。
 
-当前详细文档以中文为主，因为实际运行面主要服务于个人、本地、长期运维。
+配置优先级依次为：操作命令中的显式参数、全局 `--config`、`PHOTO_STEWARD_CONFIG`、兼容变量 `ICLOUD_PHOTO_SYNC_CONFIG`、私有活动配置指针、默认私有路径。`config activate` 会更新该私有指针，使 macOS App 与 LaunchAgent 始终使用同一份配置。全局参数必须写在子命令之前：
 
-## 技术验证
+```bash
+icloud-photo-sync --config /绝对路径/config.toml preflight
+```
+
+macOS App 读取默认私有路径。`launchd` 会把选择的配置路径明确写入每个 plist，不依赖终端会话环境。
+
+### 自动化
+
+只有在 `config validate` 与 `preflight` 都通过后，才安装自动化：
+
+```bash
+./scripts/install_launchd_agents.sh
+```
+
+默认任务会生成照片计划、执行待删池保留期处理，并可运行异地备份；它**不会**自动执行照片计划。日志位于 `~/Library/Logs/Photo Steward/`。生成的 LaunchAgent 只保存配置文件路径，不保存任何凭据。通用目录同步和 ToDo 同步属于高级扩展，不在照片中心的公共快速开始路径中。
+
+## 架构
+
+- **CLI：** 可测试、可脚本化的命令契约，也是同步语义的唯一所有者。
+- **Codex Skill：** 负责检查状态、解释计划和组织审批。
+- **macOS 控制台：** 显示健康状态、进度、待审计划并获取确认。
+
+`launchd` 调用 wrapper，再调用同一个 CLI，不会经过 App。详细边界见 [`docs/architecture.md`](./docs/architecture.md)。
+
+## 发布准备度
+
+在对方能够自行填写私有配置、理解当前是开发安装的前提下，这个 Alpha 可以提供给可信赖的技术用户评估。真正公开发布仍需要完成：
+
+- 明确许可证，并决定如何处理既有 Git 提交作者历史；
+- 建立公开远端，并从全新克隆生成不含个人运行态的发行物；
+- 用版本化安装器替换依赖仓库路径的软链接；
+- 提供经过公证、支持通用架构的 macOS App 与终端用户权限指引；
+- 完成产品名称和商标可用性核查；
+- 在外部用户机器上完成从安装到恢复的完整验证。
+
+因此，项目目前不应被表述为“已开源”或“已向公众正式可用”。文档中出现 iCloud 和 Photos 只是为了说明支持的 Apple 平台能力；Photo Steward 是独立软件，与 Apple 无隶属关系。
+
+## 验证
 
 ```bash
 python3 -m pytest tests -q
+swift build --package-path app/PhotoCenterMenuBar -c release
+zsh tests/test_menu_bar_app.sh
+zsh tests/test_launchd_job.sh
+zsh tests/test_install_local.sh
+zsh tests/test_automation_common.sh
 ```

@@ -13,8 +13,8 @@
 ### Task 1: 定义 ToDo 目录同步的规格与 CLI 入口
 
 **Files:**
-- Modify: `/Users/gaofeng/workspace/app/icloud-photo-sync/tests/test_cli_smoke.py`
-- Create: `/Users/gaofeng/workspace/app/icloud-photo-sync/tests/test_folder_sync.py`
+- Modify: `<home>/workspace/app/icloud-photo-sync/tests/test_cli_smoke.py`
+- Create: `<home>/workspace/app/icloud-photo-sync/tests/test_folder_sync.py`
 
 - [ ] Step 1: 写 CLI 子命令和目录计划输出的失败测试
 - [ ] Step 2: 运行测试确认 `folder-plan` / `folder-apply` / `todo-plan` / `todo-apply` 尚不存在
@@ -24,8 +24,8 @@
 ### Task 2: 实现通用目录 plan 核心
 
 **Files:**
-- Create: `/Users/gaofeng/workspace/app/icloud-photo-sync/tools/icloud_photo_sync/folder_sync.py`
-- Modify: `/Users/gaofeng/workspace/app/icloud-photo-sync/tests/test_folder_sync.py`
+- Create: `<home>/workspace/app/icloud-photo-sync/tools/icloud_photo_sync/folder_sync.py`
+- Modify: `<home>/workspace/app/icloud-photo-sync/tests/test_folder_sync.py`
 
 - [ ] Step 1: 写“规范化路径相等不误判”“target-only 重复副本分类”“同路径内容冲突替换”失败测试
 - [ ] Step 2: 运行测试确认失败
@@ -35,8 +35,8 @@
 ### Task 3: 实现通用目录 apply 执行器
 
 **Files:**
-- Modify: `/Users/gaofeng/workspace/app/icloud-photo-sync/tools/icloud_photo_sync/folder_sync.py`
-- Modify: `/Users/gaofeng/workspace/app/icloud-photo-sync/tests/test_folder_sync.py`
+- Modify: `<home>/workspace/app/icloud-photo-sync/tools/icloud_photo_sync/folder_sync.py`
+- Modify: `<home>/workspace/app/icloud-photo-sync/tests/test_folder_sync.py`
 
 - [ ] Step 1: 写“先移入审核池、再复制主源、再清理空目录”的失败测试
 - [ ] Step 2: 运行测试确认失败
@@ -46,8 +46,8 @@
 ### Task 4: 串起 CLI 与 ToDo 默认路径
 
 **Files:**
-- Modify: `/Users/gaofeng/workspace/app/icloud-photo-sync/tools/icloud_photo_sync/cli.py`
-- Modify: `/Users/gaofeng/workspace/app/icloud-photo-sync/tests/test_cli_smoke.py`
+- Modify: `<home>/workspace/app/icloud-photo-sync/tools/icloud_photo_sync/cli.py`
+- Modify: `<home>/workspace/app/icloud-photo-sync/tests/test_cli_smoke.py`
 
 - [ ] Step 1: 写 `folder-*` 与 `todo-*` 参数解析失败测试
 - [ ] Step 2: 运行测试确认失败
@@ -57,9 +57,9 @@
 ### Task 5: 更新文档并在真实 ToDo 路径执行
 
 **Files:**
-- Modify: `/Users/gaofeng/workspace/app/icloud-photo-sync/README.md`
-- Modify: `/Users/gaofeng/workspace/app/icloud-photo-sync/README.zh-CN.md`
-- Modify: `/Users/gaofeng/workspace/app/icloud-photo-sync/docs/automation.md`
+- Modify: `<home>/workspace/app/icloud-photo-sync/README.md`
+- Modify: `<home>/workspace/app/icloud-photo-sync/README.zh-CN.md`
+- Modify: `<home>/workspace/app/icloud-photo-sync/docs/automation.md`
 
 - [ ] Step 1: 更新 `ToDo` 主源对齐命令和审核池路径说明
 - [ ] Step 2: 运行 `pytest` 相关测试

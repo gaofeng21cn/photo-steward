@@ -1,115 +1,62 @@
-# Product Architecture
+# Architecture
 
-## Product identity
+Photo Steward is a local-first photo mirror coordinator for macOS. It exposes
+one deterministic execution engine through three user-facing interfaces. The
+split makes responsibility clear; it does not duplicate synchronization logic.
 
-`icloud-photo-sync` is the local synchronization service for an iCloud-centered
-photo hub:
+| Layer | Owns | Does not own |
+| --- | --- | --- |
+| CLI | Config parsing, manifests, identity matching, plans, guards, apply, receipts, status | Conversational interpretation or GUI state |
+| Codex Skill | Health explanation, plan review, explicit approval workflow | File copying, matching rules, safety bypasses |
+| macOS console | Status, progress, plan review, confirmation | Direct filesystem mutation or a second sync engine |
+| `launchd` wrappers | Scheduling, retries, notifications, stable process context | NAS paths, runtime paths, or TOML parsing |
 
-- iCloud Photos is the authoritative library and multi-device ingest surface.
-- NAS is the current file mirror and deletion quarantine.
-- OneDrive is an off-site copy, not an authority.
-- Time Machine protects the local Photos library, database, and downloaded
-  originals.
+All interfaces call `icloud-photo-sync`. Its private configuration is the only
+location for user-specific paths. This keeps common code reusable and keeps
+Photos libraries, NAS topology, manifests, receipts, and state private.
 
-The product is AI-first at the control plane and deterministic at the data
-plane. Exact resource identity, copy, relocation, quarantine, and retention use
-Photos metadata, stable resource keys, dates, SHA-256, and guarded receipts. AI
-may explain differences, organize review, and recommend actions, but it must not
-be the sole authority for overwrite or deletion.
+## Source and mirror contract
 
-## User surfaces
-
-The intended product has three layers that share one contract:
-
-1. The local service and CLI own deterministic operations and receipts.
-2. A Codex Skill is the primary conversational interface for inspect, plan,
-   explain, review, and explicitly approved apply operations.
-3. An optional macOS app pairs a compact menu bar entry point with a main
-   control-console window. It displays health, mount identity, last attempt,
-   last success, counts, pending plans, and execution state; it invokes the
-   service instead of reimplementing synchronization.
-
-The stable machine-readable interfaces are:
-
-```bash
-icloud-photo-sync preflight
-icloud-photo-sync status --scope photo --format json
-icloud-photo-sync plan-job
-icloud-photo-sync apply-job --plan-dir <reviewed-plan>
+```text
+iCloud Photos / local Photos library  ->  authoritative source
+NAS                                 ->  guarded mirror and quarantine
+Off-site backup                     ->  backup of the NAS mirror
 ```
 
-## Core boundaries
+No operation derives source truth from NAS contents. A mirror-only file is
+quarantined after review instead of hard-deleted. A changed capture date is an
+export to the correct path plus a guarded quarantine move from the old path.
 
-Retain in the photo core:
+## Control and execution flow
 
-- Photos.framework Swift bridge for iCloud-only and Live Photo resources
-- resource selection and manifest generation
-- SHA-256 identity and SQLite fingerprint cache
-- proposed plan, guarded apply, and applied binding state
-- NAS mirror, iCloud deletion quarantine, and retention receipts
-- backup adapter and launchd automation
+1. `preflight` validates the configured external mount, filesystem type, and
+   read/write capability. A local directory with the same name is rejected.
+2. `plan` or `plan-job` writes an immutable plan directory with a summary and
+   action manifests.
+3. A user or Agent reviews the exact plan. Any unresolved item blocks apply.
+4. `apply` or `apply-job` validates bindings and guard conditions, then makes
+   the proposed mirror and quarantine changes.
+5. A receipt and target-side readback record success or failure.
 
-Relocate out of the core:
+The plan/apply distinction is deliberate. Daily discovery can be scheduled;
+the mutation decision remains explicit.
 
-- `folder_sync` and ToDo automation belong to a generic guarded folder-sync
-  capability. They may remain here until that capability has a separate owner,
-  but their status and automation surfaces stay separate.
-- `google_review` contains historical migration rules. It should be archived as
-  a migration tool after its remaining operational need is confirmed.
+## Configuration and distribution boundary
 
-## Dependency decisions
+The default private config is
+`~/Library/Application Support/Photo Steward/config.toml`; it contains paths
+and policy but no credentials. Runtime state, caches, plans, receipts, and logs
+stay outside Git. See [`configuration.md`](./configuration.md).
 
-- Keep the small Photos Swift bridge. Generic file sync tools cannot reproduce
-  Photos resource and Live Photo semantics.
-- Keep standard-library SQLite and SHA-256. SQLAlchemy and a database service
-  would add complexity without improving this single-user workload.
-- Keep `launchd`; it is the macOS-native scheduler.
-- Route scheduled jobs directly through the existing wrappers so the
-  Photos.framework bridge keeps a stable launchd execution context. The menu
-  bar app remains an interactive console and does not own scheduled execution
-  or duplicate synchronization logic.
-- Keep guarded photo plan/apply logic. `rsync`, Syncthing, and rclone do not
-  implement authoritative-source, date relocation, and quarantine rules.
-- Replace local File Provider-only OneDrive proof with `rclone copy` plus remote
-  readback when remote credentials are configured. Local `rsync` success only
-  proves that File Provider accepted local bytes.
-- Retire direct reads of Apple private Photos SQLite tables or move them behind
-  a maintained compatibility adapter. Photos.framework remains the authority.
+The current installer is an Alpha development installer: it links a checkout
+into `~/.local/bin` and the Codex skills directory. A public release must use
+versioned packages and a notarized app. Current `com.photosteward.*` LaunchAgent
+labels are compatibility identifiers, not the future product namespace.
 
-## State contract
+## Non-goals
 
-- A plan writes proposed bindings; it does not mutate applied bindings.
-- Only an apply receipt with `status=success` commits bindings and marks a plan
-  applied.
-- `partial` and failed receipts remain pending and return a non-zero job result.
-- Latest status records last attempt, last success, consecutive failures,
-  pending plan, and the actual NAS mount source.
-- Scheduled preflight timeouts and NAS traversal errors are terminal failures;
-  they preserve the last success instead of producing an empty-NAS plan.
-- `latest_photo_overview.md` and `latest_todo_overview.md` are projections, not
-  sources of truth.
-
-## Current delivery state
-
-The first three product layers are implemented and installed from the
-canonical repository:
-
-1. The local service and CLI provide the deterministic data plane.
-2. `skills/icloud-photo-center` is the Codex conversational control plane.
-3. `app/PhotoCenterMenuBar` is a thin macOS interaction layer: the menu bar
-   provides health and quick actions, while the control-console window provides
-   status, plan review, and confirmed Apply.
-
-The remaining architecture work is bounded follow-up, not a missing user
-surface:
-
-4. Add verified OneDrive remote readback.
-5. Relocate generic folder sync and archive historical migration code.
-
-The app remains intentionally thin. It reads the JSON status contract, starts
-the CLI for manual plan generation, and applies only the exact pending plan
-after an in-app confirmation. Its main window separates overview, pending-plan
-review, and activity rather than treating a small menu bar panel as the full
-control surface. `launchd` remains outside the app process and only performs
-scheduled plan discovery, retention, and backup. The app does not contain a
-second copy of the synchronization rules.
+- Reverse sync from NAS to iCloud Photos.
+- Automatic apply from a scheduled job.
+- Permanent deletion during ordinary plan apply.
+- Visual similarity, file names, or filesystem times as photo identity.
+- Passwords, cloud tokens, or certificates in Git or `config.toml`.

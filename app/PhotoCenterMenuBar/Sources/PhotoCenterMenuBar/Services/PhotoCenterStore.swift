@@ -34,8 +34,6 @@ final class PhotoCenterStore: ObservableObject {
     @Published private(set) var progressDetail: String?
     @Published var showApplyConfirmation = false
 
-    private let nasMountURL = URL(fileURLWithPath: "/Volumes/home", isDirectory: true)
-
     init(autoRefresh: Bool = true) {
         guard autoRefresh else { return }
         DispatchQueue.main.async { [weak self] in
@@ -143,16 +141,11 @@ final class PhotoCenterStore: ObservableObject {
 
     func refresh() {
         guard begin(.refreshing) else { return }
-        guard probeNASAccess() else {
-            finish()
-            return
-        }
-
         guard run(["preflight"], timeoutSeconds: 15, completion: { [weak self] output, exitCode in
             guard let self else { return }
             guard exitCode == 0 else {
                 self.finish(
-                    "同步 CLI 预检失败：\(Self.outputMessage(output))。请检查 /Volumes/home 挂载和 CLI 安装；这不是 Photos 权限问题。"
+                    "同步 CLI 预检失败：\(Self.outputMessage(output))。请检查本机配置、NAS 挂载和 CLI 安装；这不是 Photos 权限问题。"
                 )
                 return
             }
@@ -165,16 +158,11 @@ final class PhotoCenterStore: ObservableObject {
 
     func createPlan() {
         guard begin(.creatingPlan) else { return }
-        guard probeNASAccess() else {
-            finish()
-            return
-        }
-
         guard run(["preflight"], timeoutSeconds: 15, completion: { [weak self] output, exitCode in
             guard let self else { return }
             guard exitCode == 0 else {
                 self.finish(
-                    "同步 CLI 预检失败：\(Self.outputMessage(output))。请检查 /Volumes/home 挂载和 CLI 安装；这不是 Photos 权限问题。"
+                    "同步 CLI 预检失败：\(Self.outputMessage(output))。请检查本机配置、NAS 挂载和 CLI 安装；这不是 Photos 权限问题。"
                 )
                 return
             }
@@ -193,17 +181,12 @@ final class PhotoCenterStore: ObservableObject {
 
         guard begin(.applying) else { return }
         showApplyConfirmation = false
-        guard probeNASAccess() else {
-            finish()
-            return
-        }
-
         progressDetail = "正在检查 NAS 挂载和同步服务"
         guard run(["preflight"], timeoutSeconds: 15, completion: { [weak self] output, exitCode in
             guard let self else { return }
             guard exitCode == 0 else {
                 self.finish(
-                    "Apply 前的同步 CLI 预检失败：\(Self.outputMessage(output))。请检查 /Volumes/home 挂载和 CLI 安装。"
+                    "Apply 前的同步 CLI 预检失败：\(Self.outputMessage(output))。请检查本机配置、NAS 挂载和 CLI 安装。"
                 )
                 return
             }
@@ -284,22 +267,6 @@ final class PhotoCenterStore: ObservableObject {
         progressDetail = nil
         if let nextMessage {
             message = nextMessage
-        }
-    }
-
-    private func probeNASAccess() -> Bool {
-        var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: nasMountURL.path, isDirectory: &isDirectory), isDirectory.boolValue else {
-            message = "NAS 挂载不可用：未找到 /Volumes/home。请先挂载 NAS；这不是 Photos 权限问题。"
-            return false
-        }
-
-        do {
-            _ = try FileManager.default.contentsOfDirectory(atPath: nasMountURL.path)
-            return true
-        } catch {
-            message = "NAS 挂载不可读取：\(error.localizedDescription)。请检查 /Volumes/home；这不是 Photos 权限问题。"
-            return false
         }
     }
 

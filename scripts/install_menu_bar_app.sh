@@ -2,8 +2,9 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-APP_NAME="iCloud Photo Center.app"
+APP_NAME="Photo Steward.app"
 APP_DIR="${HOME}/Applications/${APP_NAME}"
+LEGACY_APP_DIR="${HOME}/Applications/iCloud Photo Center.app"
 BUILD_DIR="$ROOT_DIR/app/PhotoCenterMenuBar/.build/release"
 SIGNING_IDENTITY="${PHOTO_CENTER_SIGNING_IDENTITY:-}"
 
@@ -18,6 +19,9 @@ fi
 swift build --package-path "$ROOT_DIR/app/PhotoCenterMenuBar" -c release
 
 rm -rf "$APP_DIR"
+if [[ "$LEGACY_APP_DIR" != "$APP_DIR" ]]; then
+  rm -rf "$LEGACY_APP_DIR"
+fi
 mkdir -p "$APP_DIR/Contents/MacOS"
 cp "$BUILD_DIR/PhotoCenterMenuBar" "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"
 cp "$ROOT_DIR/app/PhotoCenterMenuBar/Info.plist" "$APP_DIR/Contents/Info.plist"

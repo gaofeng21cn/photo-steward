@@ -2,16 +2,17 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-STATUS_DIR="$ROOT_DIR/state/status"
 source "$ROOT_DIR/scripts/lib/automation_common.sh"
+cd "$ROOT_DIR"
 
 if ! resolve_python; then
   notify_sync "Python runtime unavailable"
   exit 127
 fi
-
-mkdir -p "$ROOT_DIR/tmp/automation"
-cd "$ROOT_DIR"
+if ! resolve_photo_config; then
+  notify_sync "Photo Steward configuration unavailable"
+  exit 2
+fi
 
 if ! wait_for_nas_mount; then
   record_job_failure deleted_pool "NAS mount preflight failed" 75
@@ -19,7 +20,7 @@ if ! wait_for_nas_mount; then
   exit 75
 fi
 
-if "$PYTHON_BIN" -m tools.icloud_photo_sync.cli prune-deleted-pool "$@"; then
+if photo_cli prune-deleted-pool "$@"; then
   exit 0
 else
   exit_code=$?

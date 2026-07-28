@@ -15,7 +15,7 @@ struct MenuBarPopover: View {
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("iCloud Photo Center")
+                    Text("Photo Steward")
                         .font(.headline)
                     Text(healthTitle)
                         .font(.caption)

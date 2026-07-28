@@ -1,12 +1,33 @@
 import json
+from pathlib import Path
 
 import tools.icloud_photo_sync.cli as cli
 from tools.icloud_photo_sync.cli import build_parser
 
 
+def _write_config(path: Path, root: Path) -> None:
+    path.write_text(
+        f"""schema_version = 1
+[photos]
+library_path = "{root / 'Photos Library.photoslibrary'}"
+[mirror]
+mount_root = "{root / 'nas'}"
+photos_root = "{root / 'nas' / 'Photos'}"
+quarantine_root = "{root / 'nas' / 'Quarantine'}"
+receipts_root = "{root / 'nas' / 'Receipts'}"
+expected_filesystem = "smbfs"
+[runtime]
+state_dir = "{root / 'state'}"
+cache_dir = "{root / 'cache'}"
+""",
+        encoding="utf-8",
+    )
+
+
 def test_cli_parser_supports_all_supported_subcommands() -> None:
     parser = build_parser()
 
+    config_args = parser.parse_args(["config", "path"])
     preflight_args = parser.parse_args(["preflight"])
     status_args = parser.parse_args(["status"])
     plan_args = parser.parse_args(["plan"])
@@ -41,6 +62,8 @@ def test_cli_parser_supports_all_supported_subcommands() -> None:
     todo_apply_args = parser.parse_args(["todo-apply", "--plan-dir", "/tmp/plan"])
     todo_plan_job_args = parser.parse_args(["todo-plan-job"])
 
+    assert config_args.command == "config"
+    assert config_args.config_action == "path"
     assert preflight_args.command == "preflight"
     assert status_args.command == "status"
     assert status_args.scope == "photo"
@@ -66,6 +89,8 @@ def test_cli_parser_supports_all_supported_subcommands() -> None:
 
 
 def test_status_command_returns_machine_readable_bundle(tmp_path, capsys) -> None:
+    config_path = tmp_path / "config.toml"
+    _write_config(config_path, tmp_path)
     status_dir = tmp_path / "status"
     status_dir.mkdir()
     (status_dir / "latest_plan.json").write_text(
@@ -73,26 +98,46 @@ def test_status_command_returns_machine_readable_bundle(tmp_path, capsys) -> Non
         encoding="utf-8",
     )
 
-    assert cli.main(["status", "--status-dir", str(status_dir)]) == 0
+    assert cli.main(["--config", str(config_path), "status", "--status-dir", str(status_dir)]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["scope"] == "photo"
     assert payload["jobs"]["plan"]["summary"]["mirror_count"] == 2
 
 
-def test_preflight_command_returns_mount_identity(monkeypatch, capsys) -> None:
+def test_preflight_command_returns_mount_identity(monkeypatch, tmp_path, capsys) -> None:
+    config_path = tmp_path / "config.toml"
+    _write_config(config_path, tmp_path)
     monkeypatch.setattr(
         cli,
         "inspect_mount",
         lambda *args, **kwargs: {
-            "mount_point": "/Volumes/home",
+            "mount_point": "/Volumes/photo-nas",
             "mounted_from": "//user@nas/home",
             "filesystem": "smbfs",
         },
     )
 
-    assert cli.main(["preflight"]) == 0
+    assert cli.main(["--config", str(config_path), "preflight"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["mounted_from"] == "//user@nas/home"
+
+
+def test_missing_config_fails_before_preflight(tmp_path, capsys) -> None:
+    missing_path = tmp_path / "missing.toml"
+
+    assert cli.main(["--config", str(missing_path), "preflight"]) == 2
+    assert "configuration not found" in capsys.readouterr().err
+
+
+def test_latest_plan_uses_configured_receipts_root(tmp_path, capsys) -> None:
+    config_path = tmp_path / "config.toml"
+    _write_config(config_path, tmp_path)
+    plan_dir = tmp_path / "nas" / "Receipts" / "2026-07-28" / "plan-a"
+    plan_dir.mkdir(parents=True)
+    (plan_dir / "plan_summary.json").write_text(json.dumps({"plan_id": "plan-a"}), encoding="utf-8")
+
+    assert cli.main(["--config", str(config_path), "latest-plan"]) == 0
+    assert capsys.readouterr().out.strip() == str(plan_dir)
 
 
 def test_receipt_result_returns_nonzero_for_partial(tmp_path, capsys) -> None:

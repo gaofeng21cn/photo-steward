@@ -8,9 +8,9 @@
 
 当前三处目录约定如下：
 
-- 主源：`/Users/gaofeng/Documents/ToDo`
-- 镜像：`/Users/gaofeng/Library/CloudStorage/OneDrive-个人/ToDo`
-- 参考只读：`/Users/gaofeng/Library/CloudStorage/GoogleDrive-gaofeng21cn@gmail.com/我的云端硬盘/ToDo`
+- 主源：`<home>/Documents/ToDo`
+- 镜像：`<home>/Library/CloudStorage/OneDrive-Personal/ToDo`
+- 参考只读：`<home>/Library/CloudStorage/GoogleDrive-account/我的云端硬盘/ToDo`
 
 本轮只修改 `OneDrive`，`Google Drive` 只用于人工参考，不参与自动写入。
 
@@ -95,7 +95,7 @@
 
 `OneDrive-only` 和被主源替换掉的旧版本，统一移动到：
 
-- `/Users/gaofeng/Library/CloudStorage/OneDrive-个人/ToDo_OneDriveOnlyReview/<plan_id>/...`
+- `<home>/Library/CloudStorage/OneDrive-Personal/ToDo_OneDriveOnlyReview/<plan_id>/...`
 
 保留 `ToDo` 内相对路径，便于人工回看来源。
 
