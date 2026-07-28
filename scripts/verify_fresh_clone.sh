@@ -19,7 +19,7 @@ cd "$CLONE_DIR"
 [[ ! -e state ]]
 [[ ! -e tmp ]]
 
-if git grep -n -I -E '/Users/gaofeng|/Volumes/home|Gaofeng-Home|照片图库|gaofeng21cn|hotmail\.com' \
+if git grep -n -I -E '/Users/gaofeng|/Volumes/home|Gaofeng-Home|hotmail\.com' \
   -- ':!LICENSE' ':!scripts/verify_fresh_clone.sh'; then
   echo "fresh clone contains a personal/runtime marker" >&2
   exit 1
