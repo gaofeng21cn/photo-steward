@@ -7,8 +7,9 @@
 
 > **Alpha status.** Photo Steward is reusable as a developer-operated local
 > service, but it is not yet a packaged public release. The source currently
-> has no public license, public source distribution, notarized installer, or
-> final trademark clearance.
+> is licensed under [Apache-2.0](./LICENSE), but the project still lacks a
+> public source distribution, notarized installer, and final trademark
+> clearance.
 
 Photo Steward coordinates a local macOS Photos library, iCloud Photos, and a
 NAS mirror. It creates an auditable plan first, explains the difference, and
@@ -178,16 +179,23 @@ This Alpha can be shared with a trusted technical evaluator who creates their
 own private configuration and understands the checkout-linked installation.
 A public release still requires:
 
-- an explicit license and a decision about existing Git author history;
 - a public source repository and release artifacts built from a fresh clone;
+- a decision about whether to rewrite or retain the existing Git author history;
 - a versioned installer instead of checkout symlinks;
 - a notarized universal macOS app and end-user permission guidance;
 - final product-name and trademark clearance;
 - an external-user installation and recovery test.
 
-The project is not yet presented as open source or generally available
-software. iCloud and Photos only describe the supported Apple integration;
-Photo Steward is independent software and is not affiliated with Apple.
+The source is licensed under Apache-2.0, but the repository is currently private
+and the project is not yet a generally available software release. iCloud and
+Photos only describe the supported Apple integration; Photo Steward is
+independent software and is not affiliated with Apple.
+
+## License
+
+Photo Steward is distributed under the [Apache License 2.0](./LICENSE).
+Third-party components, if added later, must retain their own license and
+attribution requirements.
 
 ## Verification
 
