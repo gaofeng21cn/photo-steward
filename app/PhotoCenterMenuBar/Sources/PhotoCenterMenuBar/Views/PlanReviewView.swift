@@ -1,4 +1,5 @@
 import AppKit
+import ImageIO
 import Photos
 import SwiftUI
 
@@ -230,6 +231,12 @@ private struct PlanActionSection: View {
 private struct PlanItemRow: View {
     let item: PhotoCenterPlanItem
     @State private var showingPreview = false
+    @StateObject private var previewLoader: PhotoPreviewLoader
+
+    init(item: PhotoCenterPlanItem) {
+        self.item = item
+        _previewLoader = StateObject(wrappedValue: PhotoPreviewLoader(item: item))
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -237,7 +244,7 @@ private struct PlanItemRow: View {
                 showingPreview = true
             } label: {
                 HStack(alignment: .top, spacing: 12) {
-                    PlanItemThumbnail(item: item)
+                    PlanItemThumbnail(item: item, loader: previewLoader)
 
                     VStack(alignment: .leading, spacing: 5) {
                         HStack(spacing: 8) {
@@ -300,7 +307,7 @@ private struct PlanItemRow: View {
             }
         }
         .sheet(isPresented: $showingPreview) {
-            PlanItemPreview(item: item)
+            PlanItemPreview(item: item, loader: previewLoader)
         }
         .padding(10)
         .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
@@ -309,19 +316,19 @@ private struct PlanItemRow: View {
 
 private struct PlanItemThumbnail: View {
     let item: PhotoCenterPlanItem
-
-    @State private var image: NSImage?
-    @State private var didLoad = false
+    @ObservedObject var loader: PhotoPreviewLoader
 
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 7)
                 .fill(.quaternary)
 
-            if let image {
+            if let image = loader.image {
                 Image(nsImage: image)
                     .resizable()
                     .scaledToFill()
+            } else if loader.isLoading {
+                ProgressView()
             } else {
                 Image(systemName: item.action == .quarantine ? "photo" : "icloud")
                     .font(.title3)
@@ -335,46 +342,15 @@ private struct PlanItemThumbnail: View {
                 .stroke(.separator, lineWidth: 0.5)
         }
         .onAppear {
-            loadPreview()
-        }
-    }
-
-    private func loadPreview() {
-        guard !didLoad else { return }
-        didLoad = true
-
-        if let sourcePath = item.sourcePath, let image = NSImage(contentsOfFile: sourcePath) {
-            self.image = image
-            return
-        }
-
-        guard let localIdentifier = item.assetLocalIdentifier else { return }
-        let assets = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil)
-        guard let asset = assets.firstObject else { return }
-
-        let options = PHImageRequestOptions()
-        options.deliveryMode = .opportunistic
-        options.resizeMode = .fast
-        options.isNetworkAccessAllowed = true
-        PHImageManager.default().requestImage(
-            for: asset,
-            targetSize: CGSize(width: 152, height: 152),
-            contentMode: .aspectFill,
-            options: options
-        ) { image, _ in
-            guard let image else { return }
-            DispatchQueue.main.async {
-                self.image = image
-            }
+            loader.load(targetSize: CGSize(width: 180, height: 180))
         }
     }
 }
 
 private struct PlanItemPreview: View {
     let item: PhotoCenterPlanItem
+    @ObservedObject var loader: PhotoPreviewLoader
     @Environment(\.dismiss) private var dismiss
-    @State private var image: NSImage?
-    @State private var didLoad = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -396,19 +372,32 @@ private struct PlanItemPreview: View {
             ZStack {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(.quaternary)
-                if let image {
+                if let image = loader.image {
                     Image(nsImage: image)
                         .resizable()
                         .scaledToFit()
                         .padding(8)
+                } else if loader.isLoading {
+                    ProgressView("正在读取预览...")
                 } else {
                     VStack(spacing: 8) {
-                        Image(systemName: item.action == .quarantine ? "photo" : "icloud")
+                        Image(systemName: "exclamationmark.triangle")
                             .font(.largeTitle)
                             .foregroundStyle(.secondary)
-                        Text("暂时无法读取预览")
+                        Text(loader.errorMessage ?? "暂时无法读取预览")
                             .foregroundStyle(.secondary)
-                        Text(item.action == .mirror ? "请确认 Photo Steward 已获得 Photos 权限。" : "文件仍可在 Finder 中查看。")
+                        HStack {
+                            Button("重试", systemImage: "arrow.clockwise") {
+                                loader.reload(targetSize: CGSize(width: 1600, height: 1600))
+                            }
+                            if item.sourcePath != nil {
+                                Button("在 Finder 中查看", systemImage: "arrow.up.forward.app") {
+                                    revealSource()
+                                }
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        Text(item.action == .mirror ? "请确认 Photo Steward 已获得 Photos 权限，且原图已下载到本机。" : "文件仍可在 Finder 中查看。")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }
@@ -434,38 +423,127 @@ private struct PlanItemPreview: View {
         .padding(22)
         .frame(minWidth: 600, minHeight: 500)
         .onAppear {
-            loadPreview()
+            loader.load(targetSize: CGSize(width: 1600, height: 1600))
         }
     }
 
-    private func loadPreview() {
-        guard !didLoad else { return }
-        didLoad = true
+    private func revealSource() {
+        guard let sourcePath = item.sourcePath else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: sourcePath)])
+    }
+}
 
-        if let sourcePath = item.sourcePath, let image = NSImage(contentsOfFile: sourcePath) {
-            self.image = image
+private final class PhotoPreviewLoader: ObservableObject {
+    @Published private(set) var image: NSImage?
+    @Published private(set) var isLoading = false
+    @Published private(set) var errorMessage: String?
+
+    private let item: PhotoCenterPlanItem
+    private var loadedMaxPixelSize = 0
+    private var requestedMaxPixelSize = 0
+
+    init(item: PhotoCenterPlanItem) {
+        self.item = item
+    }
+
+    func load(targetSize: CGSize) {
+        let maxPixelSize = max(1, Int(max(targetSize.width, targetSize.height)))
+        requestedMaxPixelSize = max(requestedMaxPixelSize, maxPixelSize)
+        guard !isLoading, image == nil || maxPixelSize > loadedMaxPixelSize else { return }
+
+        isLoading = true
+        errorMessage = nil
+        let requestSize = requestedMaxPixelSize
+
+        if let sourcePath = item.sourcePath {
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                let image = Self.imageFromFile(path: sourcePath, maxPixelSize: requestSize)
+                self?.finish(image: image, error: image == nil ? "无法读取文件或解码照片格式。" : nil, loadedSize: requestSize)
+            }
             return
         }
 
-        guard let localIdentifier = item.assetLocalIdentifier else { return }
+        guard let localIdentifier = item.assetLocalIdentifier else {
+            finish(image: nil, error: "计划没有可用的照片来源。", loadedSize: requestSize)
+            return
+        }
+
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil)
-        guard let asset = assets.firstObject else { return }
+        guard let asset = assets.firstObject else {
+            finish(image: nil, error: "在本机 Photos 中找不到这项资产。", loadedSize: requestSize)
+            return
+        }
 
         let options = PHImageRequestOptions()
-        options.deliveryMode = .opportunistic
+        options.deliveryMode = .highQualityFormat
         options.resizeMode = .fast
         options.isNetworkAccessAllowed = true
         PHImageManager.default().requestImage(
             for: asset,
-            targetSize: CGSize(width: 1200, height: 1200),
+            targetSize: CGSize(width: requestSize, height: requestSize),
             contentMode: .aspectFit,
             options: options
-        ) { image, _ in
-            guard let image else { return }
-            DispatchQueue.main.async {
-                self.image = image
+        ) { [weak self] image, info in
+            let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+            if let image, !isDegraded {
+                self?.finish(image: image, error: nil, loadedSize: requestSize)
+            } else if let error = info?[PHImageErrorKey] as? Error {
+                self?.finish(image: nil, error: error.localizedDescription, loadedSize: requestSize)
+            } else if (info?[PHImageCancelledKey] as? Bool) == true {
+                self?.finish(image: nil, error: "预览读取已取消。", loadedSize: requestSize)
+            } else if !isDegraded && image == nil {
+                self?.finish(image: nil, error: "Photos 没有返回可显示的预览。", loadedSize: requestSize)
             }
         }
+    }
+
+    func reload(targetSize: CGSize) {
+        image = nil
+        loadedMaxPixelSize = 0
+        requestedMaxPixelSize = 0
+        errorMessage = nil
+        load(targetSize: targetSize)
+    }
+
+    private func finish(image: NSImage?, error: String?, loadedSize: Int) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.isLoading = false
+            if let image {
+                self.image = image
+                self.loadedMaxPixelSize = loadedSize
+                self.errorMessage = nil
+            } else {
+                self.errorMessage = error
+            }
+
+            if self.requestedMaxPixelSize > self.loadedMaxPixelSize, !self.isLoading {
+                self.load(targetSize: CGSize(
+                    width: self.requestedMaxPixelSize,
+                    height: self.requestedMaxPixelSize
+                ))
+            }
+        }
+    }
+
+    private static func imageFromFile(path: String, maxPixelSize: Int) -> NSImage? {
+        let url = URL(fileURLWithPath: path)
+        guard let data = try? Data(contentsOf: url, options: .mappedIfSafe), !data.isEmpty else {
+            return nil
+        }
+
+        if let source = CGImageSourceCreateWithData(data as CFData, nil) {
+            let options: [CFString: Any] = [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: maxPixelSize
+            ]
+            if let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) {
+                return NSImage(cgImage: thumbnail, size: .zero)
+            }
+        }
+
+        return NSImage(data: data)
     }
 }
 

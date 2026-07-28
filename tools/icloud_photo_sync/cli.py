@@ -24,7 +24,7 @@ from .jobs import (
     run_plan_job,
     run_todo_plan_job,
 )
-from .mounts import inspect_mount
+from .mounts import MountContractError, inspect_mount
 from .onedrive import run_onedrive_backup
 from .plan_details import build_plan_details
 from .runtime import run_apply, run_plan
@@ -44,6 +44,14 @@ def _preflight_nas(args: argparse.Namespace) -> dict:
         expected_filesystems=(args.expected_nas_filesystem,),
         require_writable=True,
     )
+
+
+def _preflight_or_report(args: argparse.Namespace) -> dict | None:
+    try:
+        return _preflight_nas(args)
+    except MountContractError as exc:
+        print(f"NAS mount unavailable: {exc}", file=sys.stderr)
+        return None
 
 
 def _load_status_bundle(status_dir: Path, scope: str) -> dict:
@@ -385,7 +393,10 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if args.command == "preflight":
-        print(json.dumps(_preflight_nas(args), ensure_ascii=False, indent=2))
+        payload = _preflight_or_report(args)
+        if payload is None:
+            return 75
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
         return 0
 
     if args.command == "status":
@@ -427,7 +438,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "plan":
-        _preflight_nas(args)
+        if _preflight_or_report(args) is None:
+            return 75
         plan_dir = run_plan(
             library_path=args.library_path,
             db_path=args.db_path,
@@ -442,7 +454,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "apply":
-        _preflight_nas(args)
+        if _preflight_or_report(args) is None:
+            return 75
         receipt_path = run_apply(
             plan_dir=Path(args.plan_dir),
             nas_root=args.nas_root,
@@ -544,7 +557,8 @@ def main(argv: list[str] | None = None) -> int:
         return _print_receipt_result(receipt_path)
 
     if args.command == "google-review-plan":
-        _preflight_nas(args)
+        if _preflight_or_report(args) is None:
+            return 75
         plan_dir = plan_google_review_rebucket(
             review_root=args.review_root,
             nas_root=args.nas_root,

@@ -32,4 +32,12 @@ rg -Fq 'completeSetup' "$SOURCE_DIR/Views/SetupView.swift"
 rg -Fq 'discoverPhotosLibrary' "$SOURCE_DIR/Views/SetupView.swift"
 rg -Fq '"--force"' "$SOURCE_DIR/Services/PhotoStewardRuntime.swift"
 
+# Plan review uses one loader for thumbnails and detail sheets, including HEIC/ImageIO fallback.
+rg -Fq 'PhotoPreviewLoader' "$SOURCE_DIR/Views/PlanReviewView.swift"
+rg -Fq 'CGImageSourceCreateThumbnailAtIndex' "$SOURCE_DIR/Views/PlanReviewView.swift"
+rg -Fq 'PHImageResultIsDegradedKey' "$SOURCE_DIR/Views/PlanReviewView.swift"
+rg -Fq '在 Finder 中查看' "$SOURCE_DIR/Views/PlanReviewView.swift"
+rg -Fq '未找到 NAS 挂载点' "$SOURCE_DIR/Services/PhotoCenterStore.swift"
+rg -Fq 'nas mount unavailable' "$SOURCE_DIR/Services/PhotoCenterStore.swift"
+
 print "menu_bar_app: static console UX contract and plist valid"

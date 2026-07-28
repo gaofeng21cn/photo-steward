@@ -3,6 +3,7 @@ from pathlib import Path
 
 import tools.icloud_photo_sync.cli as cli
 from tools.icloud_photo_sync.cli import build_parser
+from tools.icloud_photo_sync.mounts import MountContractError
 
 
 def _write_config(path: Path, root: Path) -> None:
@@ -142,6 +143,23 @@ def test_missing_config_fails_before_preflight(tmp_path, capsys) -> None:
 
     assert cli.main(["--config", str(missing_path), "preflight"]) == 2
     assert "configuration not found" in capsys.readouterr().err
+
+
+def test_preflight_reports_mount_failure_without_traceback(monkeypatch, tmp_path, capsys) -> None:
+    config_path = tmp_path / "config.toml"
+    _write_config(config_path, tmp_path)
+
+    def fail_preflight(*args, **kwargs):
+        raise MountContractError(
+            "external mount is not present for /Volumes/home; refusing local-root fallback"
+        )
+
+    monkeypatch.setattr(cli, "inspect_mount", fail_preflight)
+
+    assert cli.main(["--config", str(config_path), "preflight"]) == 75
+    stderr = capsys.readouterr().err
+    assert stderr.startswith("NAS mount unavailable: ")
+    assert "Traceback" not in stderr
 
 
 def test_latest_plan_uses_configured_receipts_root(tmp_path, capsys) -> None:

@@ -172,9 +172,7 @@ final class PhotoCenterStore: ObservableObject {
         guard run(["preflight"], timeoutSeconds: 15, completion: { [weak self] output, exitCode in
             guard let self else { return }
             guard exitCode == 0 else {
-                self.finish(
-                    "同步 CLI 预检失败：\(Self.outputMessage(output))。请检查本机配置、NAS 挂载和 CLI 安装；这不是 Photos 权限问题。"
-                )
+                self.finish(Self.mountFailureMessage(output, operation: "同步 CLI 预检"))
                 return
             }
             self.loadStatus()
@@ -189,9 +187,7 @@ final class PhotoCenterStore: ObservableObject {
         guard run(["preflight"], timeoutSeconds: 15, completion: { [weak self] output, exitCode in
             guard let self else { return }
             guard exitCode == 0 else {
-                self.finish(
-                    "同步 CLI 预检失败：\(Self.outputMessage(output))。请检查本机配置、NAS 挂载和 CLI 安装；这不是 Photos 权限问题。"
-                )
+                self.finish(Self.mountFailureMessage(output, operation: "同步 CLI 预检"))
                 return
             }
             self.runPlanJob()
@@ -213,9 +209,7 @@ final class PhotoCenterStore: ObservableObject {
         guard run(["preflight"], timeoutSeconds: 15, completion: { [weak self] output, exitCode in
             guard let self else { return }
             guard exitCode == 0 else {
-                self.finish(
-                    "Apply 前的同步 CLI 预检失败：\(Self.outputMessage(output))。请检查本机配置、NAS 挂载和 CLI 安装。"
-                )
+                self.finish(Self.mountFailureMessage(output, operation: "Apply 前的同步 CLI 预检"))
                 return
             }
             self.runApplyJob(planDir: pendingPlan)
@@ -455,7 +449,26 @@ final class PhotoCenterStore: ObservableObject {
             photosPermissionDenied = true
             return "\(operation)无法读取 Photos：macOS 没有允许 Photo Steward 访问照片。请点击“打开照片权限”，允许后重试。"
         }
+        if output.localizedCaseInsensitiveContains("external mount is not present")
+            || output.localizedCaseInsensitiveContains("path is not backed by a mounted filesystem")
+        {
+            return "\(operation)前未找到 NAS 挂载点。请先在 Finder 中连接 NAS，使 /Volumes/home 出现后再重试。"
+        }
         return "\(operation)失败：\(output)。计划仍保留待审状态，请检查日志后重试。"
+    }
+
+    private static func mountFailureMessage(_ data: Data, operation: String) -> String {
+        let output = Self.outputMessage(data)
+        if output.localizedCaseInsensitiveContains("nas mount unavailable")
+            || output.localizedCaseInsensitiveContains("external mount is not present")
+            || output.localizedCaseInsensitiveContains("path is not backed by a mounted filesystem")
+        {
+            return "\(operation)失败：未找到 NAS 挂载点。请先在 Finder 中连接 NAS，使 /Volumes/home 出现后再重试。"
+        }
+        if output.localizedCaseInsensitiveContains("unexpected filesystem") {
+            return "\(operation)失败：/Volumes/home 不是可用的 SMB NAS 挂载。请在 Finder 中重新连接 NAS 后再重试。"
+        }
+        return "\(operation)失败：\(output)。请检查本机配置、NAS 挂载和 CLI 安装。"
     }
 
     private static func isPhotosAuthorizationFailure(_ value: String) -> Bool {

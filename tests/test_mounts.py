@@ -82,5 +82,18 @@ def test_inspect_mount_rejects_local_fallback(tmp_path: Path) -> None:
     def fake_runner(command, capture_output, text, check):
         return subprocess.CompletedProcess(command, 0, stdout="/dev/disk3s5 on / (apfs, local)\n", stderr="")
 
-    with pytest.raises(MountContractError, match="unexpected filesystem"):
+    with pytest.raises(MountContractError, match="local-root fallback"):
         inspect_mount(tmp_path, command_runner=fake_runner)
+
+
+def test_inspect_mount_reports_missing_external_mount_for_absent_volume() -> None:
+    def fake_runner(command, capture_output, text, check):
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout="/dev/disk3s5 on / (apfs, local, journaled)\n",
+            stderr="",
+        )
+
+    with pytest.raises(MountContractError, match="external mount is not present"):
+        inspect_mount(Path("/Volumes/home"), command_runner=fake_runner)

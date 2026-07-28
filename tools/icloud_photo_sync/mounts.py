@@ -75,7 +75,18 @@ def inspect_mount(
     if not candidates:
         raise MountContractError(f"path is not backed by a mounted filesystem: {checked_path}")
 
-    mount_point, mounted_from, filesystem, options = max(candidates, key=lambda item: len(str(item[0])))
+    # The root APFS volume contains every /Volumes path lexically, but it is
+    # never a valid NAS mount for this contract.
+    external_candidates = [candidate for candidate in candidates if candidate[0] != Path("/")]
+    if not external_candidates:
+        raise MountContractError(
+            f"external mount is not present for {checked_path}; refusing local-root fallback"
+        )
+
+    mount_point, mounted_from, filesystem, options = max(
+        external_candidates,
+        key=lambda item: len(str(item[0])),
+    )
     expected = set(expected_filesystems)
     if expected and filesystem not in expected:
         raise MountContractError(
