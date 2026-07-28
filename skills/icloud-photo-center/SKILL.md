@@ -1,14 +1,15 @@
 ---
-name: icloud-photo-center
-description: "Use for the iCloud-centered Photo Steward service: inspect sync health, explain configured mirror differences, create or review guarded plans, and execute only an explicitly approved exact plan through icloud-photo-sync. Never replace deterministic manifests, SHA-256, guards, receipts, or quarantine checks with visual guesses or ad hoc file copying."
+name: photo-steward
+description: "Use for the iCloud-centered Photo Steward service: inspect sync health, explain configured mirror differences, create or review guarded plans, and execute only an explicitly approved exact plan through photo-steward. Never replace deterministic manifests, SHA-256, guards, receipts, or quarantine checks with visual guesses or ad hoc file copying."
 ---
 
-# iCloud Photo Center
+# Photo Steward
 
 Use this skill for Photo Steward questions about iCloud Photos as the authority,
 NAS mirror health, missing photos, date relocation, quarantine, or off-site
-backup. The Skill name is retained for compatibility; the public-facing working
-name is Photo Steward.
+backup. The primary Skill and command name is `photo-steward`. The installer
+also provides the legacy `icloud-photo-center` Skill alias and
+`icloud-photo-sync` command for existing installations.
 
 ## Boundary
 
@@ -22,12 +23,12 @@ name is Photo Steward.
 ## First use
 
 ```bash
-icloud-photo-sync config path
-icloud-photo-sync config validate
-icloud-photo-sync preflight
+photo-steward config path
+photo-steward config validate
+photo-steward preflight
 ```
 
-If the private file is absent, run `icloud-photo-sync config init`. Ask the
+If the private file is absent, run `photo-steward config init`. Ask the
 user for their local Photos library and mounted NAS locations, then have them
 review the completed TOML. Never write passwords, tokens, photo names, or
 personal paths into a response artifact or Git file.
@@ -41,8 +42,8 @@ If either fails, explain the exact failure and do not generate or apply a plan.
    health:
 
    ```bash
-   icloud-photo-sync preflight
-   icloud-photo-sync status --scope photo --format json
+   photo-steward preflight
+   photo-steward status --scope photo --format json
    ```
 2. Create a new plan unless the user explicitly selects an existing directory.
    Read `plan_summary.json` and the relevant manifests. A plan is not apply.
@@ -50,7 +51,7 @@ If either fails, explain the exact failure and do not generate or apply a plan.
    any quarantine effect in plain language.
 4. Require explicit approval for that exact plan directory. Never infer it from
    a general request or a prior conversation.
-5. Execute only `icloud-photo-sync apply-job --plan-dir <exact-plan-dir>`.
+5. Execute only `photo-steward apply-job --plan-dir <exact-plan-dir>`.
 6. Read `apply_receipt.json` and fresh JSON status. Completion requires
    `status=success`, zero guard failures, and target-side readback.
 

@@ -199,7 +199,7 @@ def _latest_plan_dir(logs_root: Path) -> Path:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="icloud-photo-sync")
+    parser = argparse.ArgumentParser(prog="photo-steward")
     parser.add_argument(
         "--config",
         type=Path,

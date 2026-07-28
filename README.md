@@ -7,18 +7,17 @@
 
 > **Alpha status.** Photo Steward is reusable as a developer-operated local
 > service, but it is not yet a packaged public release. The source currently
-> has no public license, public distribution remote, notarized installer, or
-> final brand clearance.
+> has no public license, public source distribution, notarized installer, or
+> final trademark clearance.
 
 Photo Steward coordinates a local macOS Photos library, iCloud Photos, and a
 NAS mirror. It creates an auditable plan first, explains the difference, and
 only changes the mirror after explicit approval. It is not a cloud gallery,
 reverse-sync client, or general digital-asset manager.
 
-`Photo Steward` is the public-facing working name. Existing installations keep
-the compatibility identifiers `icloud-photo-sync` (CLI) and
-`icloud-photo-center` (Codex Skill) until their identifier migration is
-separately tested.
+`photo-steward` is the primary CLI and Codex Skill identifier. Existing
+installations retain `icloud-photo-sync` (CLI) and `icloud-photo-center`
+(Codex Skill) as compatibility aliases.
 
 ## For Users
 
@@ -72,11 +71,11 @@ evaluation, not public software distribution.
 
 ```bash
 ./scripts/install_local.sh
-icloud-photo-sync config path
+photo-steward config path
 # Edit the private file printed above.
-icloud-photo-sync config validate
-icloud-photo-sync preflight
-icloud-photo-sync status --scope photo --format json
+photo-steward config validate
+photo-steward preflight
+photo-steward status --scope photo --format json
 ```
 
 Install the optional macOS console after configuration validates:
@@ -121,10 +120,10 @@ planning, safety checks, execution, and receipts. Never implement parallel sync
 logic in a prompt, Skill script, or GUI.
 
 ```bash
-icloud-photo-sync config validate
-icloud-photo-sync preflight
-icloud-photo-sync status --scope photo --format json
-icloud-photo-sync plan-job
+photo-steward config validate
+photo-steward preflight
+photo-steward status --scope photo --format json
+photo-steward plan-job
 ```
 
 Before apply, the Agent must read `plan_summary.json` and relevant manifests,
@@ -133,7 +132,7 @@ quarantine effect, then obtain approval for that exact plan directory. Execute
 only:
 
 ```bash
-icloud-photo-sync apply-job --plan-dir <exact-plan-dir>
+photo-steward apply-job --plan-dir <exact-plan-dir>
 ```
 
 Completion requires the resulting receipt plus a fresh JSON status readback.
@@ -145,7 +144,7 @@ updates the private pointer so the macOS app and LaunchAgents use the same
 profile. The global option precedes the subcommand:
 
 ```bash
-icloud-photo-sync --config /absolute/path/config.toml preflight
+photo-steward --config /absolute/path/config.toml preflight
 ```
 
 The macOS app reads the default private path. `launchd` records the selected
@@ -180,7 +179,7 @@ own private configuration and understands the checkout-linked installation.
 A public release still requires:
 
 - an explicit license and a decision about existing Git author history;
-- a public remote and release artifacts built from a fresh clone;
+- a public source repository and release artifacts built from a fresh clone;
 - a versioned installer instead of checkout symlinks;
 - a notarized universal macOS app and end-user permission guidance;
 - final product-name and trademark clearance;

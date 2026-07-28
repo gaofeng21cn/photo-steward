@@ -277,7 +277,7 @@ final class PhotoCenterStore: ObservableObject {
         completion: @escaping (Data, Int32) -> Void
     ) -> Bool {
         guard let executable = executable else {
-            message = "找不到 icloud-photo-sync CLI。请运行 scripts/install_local.sh 后重试；这不是 Photos 权限问题。"
+            message = "找不到 Photo Steward 命令。请运行 scripts/install_local.sh 后重试；这不是 Photos 权限问题。"
             return false
         }
 
@@ -358,6 +358,10 @@ final class PhotoCenterStore: ObservableObject {
 
     private var executable: URL? {
         let candidates = [
+            FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".local/bin/photo-steward"),
+            URL(fileURLWithPath: "/opt/homebrew/bin/photo-steward"),
+            URL(fileURLWithPath: "/usr/local/bin/photo-steward"),
             FileManager.default.homeDirectoryForCurrentUser
                 .appendingPathComponent(".local/bin/icloud-photo-sync"),
             URL(fileURLWithPath: "/opt/homebrew/bin/icloud-photo-sync"),

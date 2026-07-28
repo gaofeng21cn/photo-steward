@@ -15,11 +15,11 @@ The default private configuration is:
 Locate, initialize, validate, and then verify it with:
 
 ```bash
-icloud-photo-sync config path
-icloud-photo-sync config init
-icloud-photo-sync config validate
-icloud-photo-sync config activate
-icloud-photo-sync preflight
+photo-steward config path
+photo-steward config init
+photo-steward config validate
+photo-steward config activate
+photo-steward preflight
 ```
 
 `config init` writes a mode `0600` template and refuses to overwrite an
@@ -40,7 +40,7 @@ The precedence order is:
 The global option comes before the subcommand:
 
 ```bash
-icloud-photo-sync --config /absolute/path/config.toml preflight
+photo-steward --config /absolute/path/config.toml preflight
 ```
 
 `config activate` writes the selected path to the private pointer. The macOS

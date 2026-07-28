@@ -5,11 +5,11 @@
 <p align="center"><strong>面向 macOS 的受控照片镜像与备份协调器</strong></p>
 <p align="center">iCloud Photos 作为唯一权威来源 · 先审计划再变更 · 数据始终留在本机和 NAS</p>
 
-> **当前为 Alpha。** Photo Steward 已经可以作为技术用户自行部署的本地服务使用，但还不是可直接面向公众分发的软件。仓库尚未确定公开许可证、公开发布远端、经过公证的安装包和最终品牌名称。
+> **当前为 Alpha。** Photo Steward 已经可以作为技术用户自行部署的本地服务使用，但还不是可直接面向公众分发的软件。仓库尚未确定公开许可证、可公开访问的源码仓库、经过公证的安装包和最终商标可用性。
 
 Photo Steward 用来协调本机 macOS Photos 图库、iCloud Photos 与 NAS 镜像。它先生成可审计的计划，解释差异，再在用户明确确认后变更镜像端。它不是云端相册、反向同步工具，也不是通用的照片资产管理系统。
 
-`Photo Steward` 是当前采用的面向公众工作名称。为避免破坏既有 CLI 与 Codex 调用，技术标识暂时仍保留为：CLI `icloud-photo-sync`、Codex Skill `icloud-photo-center`。这些标识会在后续独立迁移并完成验证后再统一调整。
+`photo-steward` 是主 CLI 与 Codex Skill 标识。为避免破坏已有自动化，仍保留 CLI `icloud-photo-sync` 和 Codex Skill `icloud-photo-center` 作为兼容别名。
 
 ## 面向用户
 
@@ -52,11 +52,11 @@ Photo Steward 用来协调本机 macOS Photos 图库、iCloud Photos 与 NAS 镜
 
 ```bash
 ./scripts/install_local.sh
-icloud-photo-sync config path
+photo-steward config path
 # 编辑上一步输出的私有配置文件。
-icloud-photo-sync config validate
-icloud-photo-sync preflight
-icloud-photo-sync status --scope photo --format json
+photo-steward config validate
+photo-steward preflight
+photo-steward status --scope photo --format json
 ```
 
 配置通过校验后，可安装可选的 macOS 控制台：
@@ -95,16 +95,16 @@ iCloud Photos / 本机 Photos 图库
 Codex Skill 是对话入口；确定性的 CLI 才拥有配置解析、计划、安全校验、执行和回执。不要在提示词、Skill 脚本或 GUI 中另写一套同步逻辑。
 
 ```bash
-icloud-photo-sync config validate
-icloud-photo-sync preflight
-icloud-photo-sync status --scope photo --format json
-icloud-photo-sync plan-job
+photo-steward config validate
+photo-steward preflight
+photo-steward status --scope photo --format json
+photo-steward plan-job
 ```
 
 执行计划前，Agent 必须读取 `plan_summary.json` 与相关清单，解释 `mirror_count`、`delete_count`、`unresolved_count`、总数据量和待删池影响，并取得用户对精确计划目录的明确同意。随后只能执行：
 
 ```bash
-icloud-photo-sync apply-job --plan-dir <精确计划目录>
+photo-steward apply-job --plan-dir <精确计划目录>
 ```
 
 只有读取执行回执和最新 JSON 状态后，才能宣称任务完成。
@@ -112,7 +112,7 @@ icloud-photo-sync apply-job --plan-dir <精确计划目录>
 配置优先级依次为：操作命令中的显式参数、全局 `--config`、`PHOTO_STEWARD_CONFIG`、兼容变量 `ICLOUD_PHOTO_SYNC_CONFIG`、私有活动配置指针、默认私有路径。`config activate` 会更新该私有指针，使 macOS App 与 LaunchAgent 始终使用同一份配置。全局参数必须写在子命令之前：
 
 ```bash
-icloud-photo-sync --config /绝对路径/config.toml preflight
+photo-steward --config /绝对路径/config.toml preflight
 ```
 
 macOS App 读取默认私有路径。`launchd` 会把选择的配置路径明确写入每个 plist，不依赖终端会话环境。
@@ -140,7 +140,7 @@ macOS App 读取默认私有路径。`launchd` 会把选择的配置路径明确
 在对方能够自行填写私有配置、理解当前是开发安装的前提下，这个 Alpha 可以提供给可信赖的技术用户评估。真正公开发布仍需要完成：
 
 - 明确许可证，并决定如何处理既有 Git 提交作者历史；
-- 建立公开远端，并从全新克隆生成不含个人运行态的发行物；
+- 建立可公开访问的源码仓库，并从全新克隆生成不含个人运行态的发行物；
 - 用版本化安装器替换依赖仓库路径的软链接；
 - 提供经过公证、支持通用架构的 macOS App 与终端用户权限指引；
 - 完成产品名称和商标可用性核查；

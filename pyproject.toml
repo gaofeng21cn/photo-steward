@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "icloud-photo-sync"
+name = "photo-steward"
 version = "0.3.0"
 description = "Guarded photo mirroring coordinator for macOS"
 readme = "README.md"
@@ -19,6 +19,8 @@ classifiers = [
 keywords = ["backup", "icloud", "macos", "photos", "sync"]
 
 [project.scripts]
+photo-steward = "tools.icloud_photo_sync.cli:main"
+# Retained for existing shell scripts, LaunchAgents, and private installations.
 icloud-photo-sync = "tools.icloud_photo_sync.cli:main"
 
 [tool.setuptools.packages.find]

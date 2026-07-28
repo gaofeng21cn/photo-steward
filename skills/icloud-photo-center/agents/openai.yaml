@@ -1,7 +1,7 @@
 interface:
-  display_name: "iCloud Photo Center"
-  short_description: "Review and run guarded iCloud photo sync plans"
+  display_name: "Photo Steward"
+  short_description: "Review and run guarded iCloud photo plans"
   brand_color: "#0A84FF"
-  default_prompt: "Use $icloud-photo-center to inspect the current iCloud photo center health and explain any pending NAS plan."
+  default_prompt: "Use $photo-steward to inspect Photo Steward health and explain any pending NAS plan."
 policy:
   allow_implicit_invocation: true

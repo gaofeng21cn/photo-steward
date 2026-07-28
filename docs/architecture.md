@@ -11,7 +11,8 @@ split makes responsibility clear; it does not duplicate synchronization logic.
 | macOS console | Status, progress, plan review, confirmation | Direct filesystem mutation or a second sync engine |
 | `launchd` wrappers | Scheduling, retries, notifications, stable process context | NAS paths, runtime paths, or TOML parsing |
 
-All interfaces call `icloud-photo-sync`. Its private configuration is the only
+All interfaces call `photo-steward`. The legacy `icloud-photo-sync` command is
+an equivalent compatibility alias. Its private configuration is the only
 location for user-specific paths. This keeps common code reusable and keeps
 Photos libraries, NAS topology, manifests, receipts, and state private.
 

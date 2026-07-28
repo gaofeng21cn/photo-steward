@@ -16,4 +16,7 @@ def test_photo_center_skill_is_valid_and_discoverable() -> None:
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert (skill / "agents/openai.yaml").exists()
-    assert "icloud-photo-sync status --scope photo --format json" in (skill / "SKILL.md").read_text()
+    skill_text = (skill / "SKILL.md").read_text()
+    assert "name: photo-steward" in skill_text
+    assert "photo-steward status --scope photo --format json" in skill_text
+    assert "icloud-photo-center" in skill_text
