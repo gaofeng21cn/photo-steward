@@ -29,5 +29,7 @@ rg -Fq 'run(["preflight"]' "$store_source"
 rg -Fq 'runtime/current/scripts/icloud-photo-sync' "$store_source"
 rg -Fq 'PhotoStewardRuntimeController' "$SOURCE_DIR/Services/PhotoStewardRuntime.swift"
 rg -Fq 'completeSetup' "$SOURCE_DIR/Views/SetupView.swift"
+rg -Fq 'discoverPhotosLibrary' "$SOURCE_DIR/Views/SetupView.swift"
+rg -Fq '"--force"' "$SOURCE_DIR/Services/PhotoStewardRuntime.swift"
 
 print "menu_bar_app: static console UX contract and plist valid"

@@ -74,11 +74,13 @@ choose:
 1. the local Photos library;
 2. the mounted NAS photo mirror directory.
 
-The first-run wizard then installs the CLI at `~/.local/bin`, installs the
-`photo-steward` Codex Skill under `~/.codex/skills`, writes the private
-configuration, requests Photos permission, and installs the photo-only
-`launchd` jobs. No Python, Swift, repository checkout, or manual TOML editing
-is required.
+The first-run wizard normally discovers the Photos library in `~/Pictures`;
+you can change it if the Mac has more than one library. Select the mounted NAS
+photo mirror directory, and the wizard installs the CLI at `~/.local/bin`,
+installs the `photo-steward` Codex Skill under `~/.codex/skills`, writes the
+private configuration, requests Photos permission, and installs the
+photo-only `launchd` jobs. No Python, Swift, repository checkout, or manual
+TOML editing is required.
 
 The source checkout also contains developer-only installers:
 

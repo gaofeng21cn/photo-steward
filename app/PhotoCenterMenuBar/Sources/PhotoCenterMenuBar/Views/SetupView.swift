@@ -28,13 +28,15 @@ struct SetupView: View {
                     title: "本机 Photos 图库",
                     subtitle: photosLibrary?.path ?? "未选择",
                     symbol: "photo.on.rectangle.angled",
-                    action: choosePhotosLibrary
+                    action: choosePhotosLibrary,
+                    buttonTitle: "更改"
                 )
                 locationRow(
                     title: "NAS 照片镜像目录",
                     subtitle: nasPhotos?.path ?? "未选择",
                     symbol: "externaldrive",
-                    action: chooseNASDirectory
+                    action: chooseNASDirectory,
+                    buttonTitle: "选择"
                 )
             }
 
@@ -72,6 +74,11 @@ struct SetupView: View {
         }
         .padding(32)
         .frame(minWidth: 600, idealWidth: 680, minHeight: 430, idealHeight: 480)
+        .onAppear {
+            if photosLibrary == nil {
+                photosLibrary = discoverPhotosLibrary()
+            }
+        }
         .onChange(of: controller.state) { state in
             if state == .ready {
                 onReady()
@@ -91,7 +98,8 @@ struct SetupView: View {
         title: String,
         subtitle: String,
         symbol: String,
-        action: @escaping () -> Void
+        action: @escaping () -> Void,
+        buttonTitle: String
     ) -> some View {
         HStack(spacing: 12) {
             Image(systemName: symbol)
@@ -107,7 +115,7 @@ struct SetupView: View {
                     .truncationMode(.middle)
             }
             Spacer()
-            Button("选择", action: action)
+            Button(buttonTitle, action: action)
         }
         .padding(14)
         .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 8))
@@ -123,6 +131,42 @@ struct SetupView: View {
         chooseDirectory(title: "选择 NAS 照片镜像目录") { url in
             nasPhotos = url
         }
+    }
+
+    private func discoverPhotosLibrary() -> URL? {
+        let picturesDirectory = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Pictures", isDirectory: true)
+        let preferredNames = [
+            "Photos Library.photoslibrary",
+            "照片图库.photoslibrary"
+        ]
+
+        for name in preferredNames {
+            let candidate = picturesDirectory.appendingPathComponent(name, isDirectory: true)
+            if isPhotosLibrary(candidate) {
+                return candidate
+            }
+        }
+
+        guard let entries = try? FileManager.default.contentsOfDirectory(
+            at: picturesDirectory,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return nil
+        }
+        return entries
+            .filter(isPhotosLibrary)
+            .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+            .first
+    }
+
+    private func isPhotosLibrary(_ url: URL) -> Bool {
+        guard url.pathExtension.caseInsensitiveCompare("photoslibrary") == .orderedSame else {
+            return false
+        }
+        var isDirectory: ObjCBool = false
+        return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
     }
 
     private func chooseDirectory(title: String, completion: @escaping (URL) -> Void) {

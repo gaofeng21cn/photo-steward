@@ -212,6 +212,7 @@ final class PhotoStewardRuntimeController: ObservableObject {
                             photosLibrary.path,
                             "--nas-photos",
                             nasPhotos.path,
+                            "--force",
                         ]
                     ),
                     action: "写入私有配置"
