@@ -150,7 +150,7 @@ if [[ "$PHOTO_ONLY" == false && "$CORE_ONLY" == false ]]; then
     "$LOG_DIR/onedrive.stderr.log"
 fi
 
-if [[ "$INCLUDE_TODO" == true && "$PHOTO_ONLY" == false && "$CORE_ONLY" == false ]]; then
+if [[ "$INCLUDE_TODO" == true && "$CORE_ONLY" == false ]]; then
   /bin/chmod +x "$ROOT_DIR/scripts/run_todo_plan.sh"
   write_plist \
     "$TODO_LABEL" \
@@ -167,6 +167,6 @@ printf '%s\n' \
 if [[ "$PHOTO_ONLY" == false && "$CORE_ONLY" == false ]]; then
   printf '%s\n' "$AGENT_DIR/com.photosteward.onedrive.daily.plist"
 fi
-if [[ "$INCLUDE_TODO" == true && "$PHOTO_ONLY" == false && "$CORE_ONLY" == false ]]; then
+if [[ "$INCLUDE_TODO" == true && "$CORE_ONLY" == false ]]; then
   printf '%s\n' "$AGENT_DIR/$TODO_LABEL.plist"
 fi

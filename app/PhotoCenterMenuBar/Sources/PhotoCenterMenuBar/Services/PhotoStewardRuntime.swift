@@ -146,10 +146,14 @@ final class PhotoStewardRuntimeController: ObservableObject {
                     arguments: ["config", "validate"]
                 )
                 if result.exitCode == 0 {
-                    if !coreAgentsUseRuntime(root) {
+                    let configSummary = try JSONDecoder().decode(
+                        RuntimeConfigSummary.self,
+                        from: Data(result.output.utf8)
+                    )
+                    if !agentsUseRuntime(root, configSummary: configSummary) {
                         let agentsResult = try run(
                             executable: root.appendingPathComponent("scripts/install_launchd_agents.sh"),
-                            arguments: ["--core-only"]
+                            arguments: agentInstallArguments(for: configSummary)
                         )
                         try Self.requireSuccess(agentsResult, action: "更新后台同步任务")
                     }
@@ -242,16 +246,35 @@ final class PhotoStewardRuntimeController: ObservableObject {
         try Self.runProcess(executable: executable, arguments: arguments)
     }
 
-    private func coreAgentsUseRuntime(_ runtimeRoot: URL) -> Bool {
+    private func agentInstallArguments(for configSummary: RuntimeConfigSummary) -> [String] {
+        var arguments: [String] = []
+        if !configSummary.backupConfigured {
+            arguments.append("--photo-only")
+        }
+        if configSummary.todoExtensionConfigured {
+            arguments.append("--include-todo")
+        }
+        return arguments
+    }
+
+    private func agentsUseRuntime(_ runtimeRoot: URL, configSummary: RuntimeConfigSummary) -> Bool {
         let launchAgents = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/LaunchAgents", isDirectory: true)
-        let expected = [
-            "com.photosteward.plan.daily": runtimeRoot.appendingPathComponent("scripts/run_plan.sh").path,
-            "com.photosteward.deleted-pool.daily": runtimeRoot
-                .appendingPathComponent("scripts/run_deleted_pool_retention.sh").path,
+        let contracts: [(String, String, Bool)] = [
+            ("com.photosteward.plan.daily", "run_plan.sh", true),
+            ("com.photosteward.deleted-pool.daily", "run_deleted_pool_retention.sh", true),
+            ("com.photosteward.onedrive.daily", "run_onedrive_backup.sh", configSummary.backupConfigured),
+            ("com.photosteward.todo.daily", "run_todo_plan.sh", configSummary.todoExtensionConfigured),
         ]
-        for (label, executable) in expected {
+        for (label, scriptName, enabled) in contracts {
             let plist = launchAgents.appendingPathComponent("\(label).plist")
+            if !enabled {
+                if FileManager.default.fileExists(atPath: plist.path) {
+                    return false
+                }
+                continue
+            }
+            let executable = runtimeRoot.appendingPathComponent("scripts/\(scriptName)").path
             guard let data = try? Data(contentsOf: plist),
                   let payload = try? PropertyListSerialization.propertyList(from: data, format: nil),
                   let dictionary = payload as? [String: Any],
@@ -293,4 +316,14 @@ final class PhotoStewardRuntimeController: ObservableObject {
 private struct ProcessResult: Sendable {
     let exitCode: Int32
     let output: String
+}
+
+private struct RuntimeConfigSummary: Decodable {
+    let backupConfigured: Bool
+    let todoExtensionConfigured: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case backupConfigured = "backup_configured"
+        case todoExtensionConfigured = "todo_extension_configured"
+    }
 }
