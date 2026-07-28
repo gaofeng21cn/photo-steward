@@ -49,10 +49,12 @@ The default private config is
 and policy but no credentials. Runtime state, caches, plans, receipts, and logs
 stay outside Git. See [`configuration.md`](./configuration.md).
 
-The current installer is an Alpha development installer: it links a checkout
-into `~/.local/bin` and the Codex skills directory. A public release must use
-versioned packages and a notarized app. Current `com.photosteward.*` LaunchAgent
-labels are compatibility identifiers, not the future product namespace.
+The integrated installer is the normal distribution path: a versioned,
+notarized App carries the runtime, CLI, Photos bridge, and Codex Skill, then
+installs them into user-owned locations on first launch. Checkout-linked
+installers remain available only for development and testing. Current
+`com.photosteward.*` LaunchAgent labels are compatibility identifiers, not the
+future product namespace.
 
 ## Non-goals
 

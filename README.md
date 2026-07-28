@@ -5,10 +5,10 @@
 <p align="center"><strong>Guarded photo mirroring for macOS</strong></p>
 <p align="center">iCloud Photos as authority · Review before mutation · Local data stays local</p>
 
-> **Public release.** Photo Steward is an independent macOS application
-> published under [Apache-2.0](./LICENSE). The app is self-contained: its
-> release bundle includes the sync runtime, Photos bridge, CLI, Codex Skill,
-> and first-run setup.
+> **Integrated installer.** Photo Steward is an independent macOS application
+> published under [Apache-2.0](./LICENSE). Its release bundle is
+> self-contained: it includes the sync runtime, Photos bridge, CLI, Codex
+> Skill, and first-run setup.
 
 Photo Steward coordinates a local macOS Photos library, iCloud Photos, and a
 NAS mirror. It creates an auditable plan first, explains the difference, and
@@ -185,10 +185,11 @@ the app. See [`docs/architecture.md`](./docs/architecture.md).
 
 ## Release Readiness
 
-Version `0.4.0` is the integrated-installer release. Its notarized universal
+Version `0.4.0` is the integrated-installer release candidate. Its universal
 App contains the runtime required by the CLI, the prebuilt Photos bridge, the
-Codex Skill, and the first-run setup flow. The source checkout remains useful
-for contributors, but a normal user should install only the App.
+Codex Skill, and the first-run setup flow. A public download is published only
+after the App is notarized and accepted by Gatekeeper. The source checkout
+remains useful for contributors, but a normal user should install only the App.
 
 iCloud and Photos describe the supported Apple integration; Photo Steward is
 independent software and is not affiliated with Apple. The Apache-2.0 license
