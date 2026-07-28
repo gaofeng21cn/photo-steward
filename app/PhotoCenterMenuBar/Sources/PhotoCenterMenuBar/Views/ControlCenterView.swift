@@ -53,7 +53,7 @@ struct ControlCenterView: View {
                         Button {
                             store.refresh()
                         } label: {
-                            Image(systemName: "arrow.clockwise")
+                            Label("刷新状态", systemImage: "arrow.clockwise")
                         }
                         .help("刷新状态")
                         .accessibilityLabel("刷新状态")
@@ -62,13 +62,18 @@ struct ControlCenterView: View {
                         Button {
                             store.createPlan()
                         } label: {
-                            Image(systemName: "doc.text.magnifyingglass")
+                            Label("生成新计划", systemImage: "doc.text.magnifyingglass")
                         }
                         .help("生成计划")
                         .accessibilityLabel("生成计划")
                         .disabled(isExecuting)
                     }
                 }
+        }
+        .onChange(of: store.pendingPlan) { pendingPlan in
+            if pendingPlan != nil {
+                selection = .planReview
+            }
         }
         .frame(minWidth: 840, idealWidth: 960, minHeight: 560, idealHeight: 640)
     }
@@ -77,7 +82,9 @@ struct ControlCenterView: View {
     private var detailView: some View {
         switch selection ?? .overview {
         case .overview:
-            OverviewView(store: store)
+            OverviewView(store: store) {
+                selection = .planReview
+            }
         case .planReview:
             PlanReviewView(store: store)
         case .activity:
@@ -92,9 +99,44 @@ struct ControlCenterView: View {
 
 private struct OverviewView: View {
     @ObservedObject var store: PhotoCenterStore
+    let onOpenPlan: () -> Void
 
     var body: some View {
         Form {
+            if store.photosPermissionDenied {
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("无法读取 Photos", systemImage: "lock.trianglebadge.exclamationmark")
+                            .font(.headline)
+                            .foregroundStyle(.red)
+                        Text("macOS 没有允许 Photo Steward 读取照片，因此不能生成新计划。")
+                            .foregroundStyle(.secondary)
+                        HStack {
+                            Button("打开照片权限", systemImage: "gear") {
+                                store.openPhotosPermissionSettings()
+                            }
+                            Button("重试", systemImage: "arrow.clockwise") {
+                                store.refresh()
+                            }
+                            .disabled(store.isBusy)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+            }
+
+            if let notice = store.planNotice {
+                Section {
+                    Label(notice, systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    if store.pendingPlan != nil {
+                        Text("已有计划仍可在“待审计划”中查看；修复权限后，点击“生成新计划”获取最新差额。")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
             Section("服务状态") {
                 LabeledContent("状态") {
                     Label(store.health.displayName, systemImage: store.statusSymbol)
@@ -112,9 +154,10 @@ private struct OverviewView: View {
                         Text("\(store.pendingDeleteCount) 个文件")
                     }
                     LabeledContent("数据量", value: byteCount)
-                    Text("请在“待审计划”中核对精确范围后再执行 Apply。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Button("查看待审计划", systemImage: "doc.text.magnifyingglass") {
+                        onOpenPlan()
+                    }
+                    .buttonStyle(.borderedProminent)
                 } else {
                     Text("当前没有待审计划。")
                         .foregroundStyle(.secondary)

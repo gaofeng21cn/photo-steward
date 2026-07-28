@@ -49,7 +49,7 @@ resolve_python() {
       export PYTHON_BIN
       if [[ -n "${PHOTO_STEWARD_RUNTIME_ROOT:-}" ]]; then
         export PYTHONPATH="$PHOTO_STEWARD_RUNTIME_ROOT/vendor:$PHOTO_STEWARD_RUNTIME_ROOT${PYTHONPATH:+:$PYTHONPATH}"
-        export PHOTO_STEWARD_PHOTOS_BRIDGE="$PHOTO_STEWARD_RUNTIME_ROOT/bin/photos_bridge"
+        export PHOTO_STEWARD_PHOTOS_BRIDGE="$PHOTO_STEWARD_RUNTIME_ROOT/bin/PhotoStewardPhotosBridge.app/Contents/MacOS/photos_bridge"
       fi
       return 0
     fi

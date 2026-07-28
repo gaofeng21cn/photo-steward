@@ -26,6 +26,7 @@ from .jobs import (
 )
 from .mounts import inspect_mount
 from .onedrive import run_onedrive_backup
+from .plan_details import build_plan_details
 from .runtime import run_apply, run_plan
 
 
@@ -105,6 +106,7 @@ def _require_arguments(args: argparse.Namespace) -> None:
         "status": ("status_dir",),
         "record-failure": ("status_dir",),
         "latest-plan": ("logs_root",),
+        "plan-details": ("nas_root",),
         "plan": (
             "library_path",
             "db_path",
@@ -254,6 +256,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     latest_plan_parser = subparsers.add_parser("latest-plan")
     latest_plan_parser.add_argument("--logs-root", type=Path)
+
+    plan_details_parser = subparsers.add_parser(
+        "plan-details",
+        help="read the user-facing review projection for one exact plan",
+    )
+    plan_details_parser.add_argument("--plan-dir", type=Path, required=True)
+    plan_details_parser.add_argument("--nas-root", type=Path)
 
     plan_parser = subparsers.add_parser("plan")
     plan_parser.add_argument("--library-path", type=Path)
@@ -406,6 +415,15 @@ def main(argv: list[str] | None = None) -> int:
         except ConfigError as exc:
             print(str(exc), file=sys.stderr)
             return 1
+        return 0
+
+    if args.command == "plan-details":
+        try:
+            payload = build_plan_details(args.plan_dir, nas_root=args.nas_root)
+        except (OSError, KeyError, json.JSONDecodeError) as exc:
+            print(f"cannot read plan details: {exc}", file=sys.stderr)
+            return 1
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
         return 0
 
     if args.command == "plan":

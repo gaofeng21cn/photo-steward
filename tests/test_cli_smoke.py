@@ -30,6 +30,7 @@ def test_cli_parser_supports_all_supported_subcommands() -> None:
     config_args = parser.parse_args(["config", "path"])
     preflight_args = parser.parse_args(["preflight"])
     status_args = parser.parse_args(["status"])
+    plan_details_args = parser.parse_args(["plan-details", "--plan-dir", "/tmp/plan"])
     plan_args = parser.parse_args(["plan"])
     apply_args = parser.parse_args(["apply", "--plan-dir", "/tmp/plan"])
     plan_job_args = parser.parse_args(["plan-job"])
@@ -77,6 +78,8 @@ def test_cli_parser_supports_all_supported_subcommands() -> None:
     assert preflight_args.command == "preflight"
     assert status_args.command == "status"
     assert status_args.scope == "photo"
+    assert plan_details_args.command == "plan-details"
+    assert str(plan_details_args.plan_dir) == "/tmp/plan"
     assert plan_args.command == "plan"
     assert apply_args.command == "apply"
     assert apply_args.plan_dir == "/tmp/plan"
@@ -150,6 +153,63 @@ def test_latest_plan_uses_configured_receipts_root(tmp_path, capsys) -> None:
 
     assert cli.main(["--config", str(config_path), "latest-plan"]) == 0
     assert capsys.readouterr().out.strip() == str(plan_dir)
+
+
+def test_plan_details_returns_review_projection(tmp_path, capsys) -> None:
+    config_path = tmp_path / "config.toml"
+    _write_config(config_path, tmp_path)
+    plan_dir = tmp_path / "nas" / "Receipts" / "2026-07-28" / "plan-a"
+    plan_dir.mkdir(parents=True)
+    (plan_dir / "plan_summary.json").write_text(
+        json.dumps(
+            {
+                "plan_id": "plan-a",
+                "mirror_count": 1,
+                "delete_count": 1,
+                "unresolved_count": 0,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (plan_dir / "mirror_to_nas.json").write_text(
+        json.dumps(
+            {
+                "items": [
+                    {
+                        "resource_key": "asset:0:photo.heic",
+                        "target_relative_path": "2025/01/photo.heic",
+                        "original_filename": "photo.heic",
+                        "bytes": 12,
+                        "sha256": "a" * 64,
+                        "source_kind": "photos_resource_export",
+                        "asset_local_identifier": "asset/L0/001",
+                        "resource_index": 0,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    (plan_dir / "move_to_nas_deleted_pool.json").write_text(
+        json.dumps(
+            {
+                "items": [
+                    {
+                        "relative_path": "2026/07/IMG_6700.HEIC",
+                        "bytes": 34,
+                        "sha256": "b" * 64,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert cli.main(["--config", str(config_path), "plan-details", "--plan-dir", str(plan_dir)]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["plan_id"] == "plan-a"
+    assert [item["action"] for item in payload["items"]] == ["mirror", "quarantine"]
+    assert payload["items"][1]["source_path"].endswith("/nas/Photos/2026/07/IMG_6700.HEIC")
 
 
 def test_receipt_result_returns_nonzero_for_partial(tmp_path, capsys) -> None:

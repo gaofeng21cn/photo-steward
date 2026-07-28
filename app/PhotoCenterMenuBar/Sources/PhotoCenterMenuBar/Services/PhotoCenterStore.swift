@@ -1,4 +1,5 @@
 import Combine
+import AppKit
 import Foundation
 import SwiftUI
 
@@ -32,6 +33,8 @@ final class PhotoCenterStore: ObservableObject {
     @Published private(set) var message = "正在读取状态..."
     @Published private(set) var execution: PhotoCenterExecution = .idle
     @Published private(set) var progressDetail: String?
+    @Published private(set) var planDetails: PhotoCenterPlanDetails?
+    @Published private(set) var photosPermissionDenied = false
     @Published var showApplyConfirmation = false
 
     init(autoRefresh: Bool = true) {
@@ -72,7 +75,25 @@ final class PhotoCenterStore: ObservableObject {
         Self.byteCountDisplay(pendingBytes)
     }
 
+    var hasReviewablePlan: Bool {
+        guard let pendingPlan, let planDetails else { return false }
+        return planDetails.planID == URL(fileURLWithPath: pendingPlan).lastPathComponent
+    }
+
+    var planNotice: String? {
+        guard plan?.status?.lowercased() == "failed",
+              let detail = plan?.message,
+              !detail.isEmpty
+        else {
+            return nil
+        }
+        return Self.userFacingPlanFailure(detail)
+    }
+
     var health: PhotoCenterHealth {
+        if photosPermissionDenied {
+            return .error
+        }
         guard let plan else { return .unknown }
 
         if plan.status?.lowercased() == "failed" {
@@ -139,6 +160,13 @@ final class PhotoCenterStore: ObservableObject {
         }
     }
 
+    func openPhotosPermissionSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Photos") else {
+            return
+        }
+        NSWorkspace.shared.open(url)
+    }
+
     func refresh() {
         guard begin(.refreshing) else { return }
         guard run(["preflight"], timeoutSeconds: 15, completion: { [weak self] output, exitCode in
@@ -202,7 +230,7 @@ final class PhotoCenterStore: ObservableObject {
         guard run(["plan-job"], completion: { [weak self] output, exitCode in
             guard let self else { return }
             guard exitCode == 0 else {
-                self.finish("生成计划失败：\(Self.outputMessage(output))。请检查 NAS 挂载和同步 CLI。")
+                self.finish(self.failureMessage(output, operation: "生成计划"))
                 return
             }
             self.message = "计划已生成，正在读取状态..."
@@ -218,9 +246,7 @@ final class PhotoCenterStore: ObservableObject {
         guard run(["apply-job", "--plan-dir", planDir], completion: { [weak self] output, exitCode in
             guard let self else { return }
             guard exitCode == 0 else {
-                self.finish(
-                    "Apply 失败：\(Self.outputMessage(output))。计划仍保留待审状态，请检查最新日志后重试。"
-                )
+                self.finish(self.failureMessage(output, operation: "Apply"))
                 return
             }
             self.message = "Apply 已完成，正在读取最新状态..."
@@ -242,7 +268,8 @@ final class PhotoCenterStore: ObservableObject {
 
             do {
                 self.bundle = try JSONDecoder().decode(PhotoCenterStatusBundle.self, from: output)
-                self.finish("最近读取：\(Self.now())")
+                self.photosPermissionDenied = self.plan?.message.map(Self.isPhotosAuthorizationFailure) ?? false
+                self.loadPlanDetails()
             } catch {
                 self.finish("状态解析失败：\(error.localizedDescription)")
             }
@@ -259,7 +286,44 @@ final class PhotoCenterStore: ObservableObject {
         }
         self.execution = execution
         progressDetail = nil
+        if execution != .applying {
+            photosPermissionDenied = false
+        }
         return true
+    }
+
+    private func loadPlanDetails() {
+        guard let pendingPlan else {
+            planDetails = nil
+            finish("最近读取：\(Self.now())")
+            return
+        }
+
+        progressDetail = "正在读取待审计划"
+        guard run(["plan-details", "--plan-dir", pendingPlan], completion: { [weak self] output, exitCode in
+            guard let self else { return }
+            guard exitCode == 0 else {
+                self.planDetails = nil
+                self.finish("状态已读取，但无法展开待审计划。请点击刷新重试。")
+                return
+            }
+
+            do {
+                self.planDetails = try JSONDecoder().decode(PhotoCenterPlanDetails.self, from: output)
+                if let notice = self.planNotice {
+                    self.finish("上次计划未生成：\(notice) 当前仍保留待审计划，可先在“待审计划”中审核。")
+                } else {
+                    self.finish("最近读取：\(Self.now())")
+                }
+            } catch {
+                self.planDetails = nil
+                self.finish("待审计划解析失败：\(error.localizedDescription)")
+            }
+        }) else {
+            planDetails = nil
+            finish()
+            return
+        }
     }
 
     private func finish(_ nextMessage: String? = nil) {
@@ -383,6 +447,26 @@ final class PhotoCenterStore: ObservableObject {
             .split(separator: "\n")
             .last
             .map(String.init) ?? "未知错误"
+    }
+
+    private func failureMessage(_ data: Data, operation: String) -> String {
+        let output = Self.outputMessage(data)
+        if Self.isPhotosAuthorizationFailure(output) {
+            photosPermissionDenied = true
+            return "\(operation)无法读取 Photos：macOS 没有允许 Photo Steward 访问照片。请点击“打开照片权限”，允许后重试。"
+        }
+        return "\(operation)失败：\(output)。计划仍保留待审状态，请检查日志后重试。"
+    }
+
+    private static func isPhotosAuthorizationFailure(_ value: String) -> Bool {
+        value.localizedCaseInsensitiveContains("photos authorization unavailable")
+    }
+
+    private static func userFacingPlanFailure(_ value: String) -> String {
+        if isPhotosAuthorizationFailure(value) {
+            return "macOS 没有允许 Photo Steward 访问 Photos"
+        }
+        return value
     }
 
     nonisolated private static func readStream(

@@ -19,7 +19,7 @@ rg -Fq 'NavigationSplitView' "$SOURCE_DIR"
 [[ -n "$(find "$SOURCE_DIR" -type f \( -iname '*control*.swift' -o -iname '*console*.swift' \) -print -quit)" ]]
 [[ -n "$(find "$SOURCE_DIR" -type f -iname '*plan*.swift' -print -quit)" ]]
 
-for label in "打开控制台" "生成计划" "待审计划" "执行 Apply"; do
+for label in "打开控制台" "生成新计划" "待审计划" "确认并执行此计划"; do
   rg -Fq --glob '*.swift' "$label" "$SOURCE_DIR"
 done
 

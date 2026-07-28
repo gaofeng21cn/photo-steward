@@ -32,6 +32,7 @@ fi
 /bin/rm -rf "$OUTPUT_DIR" "$BUILD_DIR"
 mkdir -p \
   "$OUTPUT_DIR/bin" \
+  "$OUTPUT_DIR/bin/PhotoStewardPhotosBridge.app/Contents/MacOS" \
   "$OUTPUT_DIR/vendor" \
   "$OUTPUT_DIR/scripts/lib" \
   "$OUTPUT_DIR/skills/photo-steward" \
@@ -65,8 +66,35 @@ for architecture in arm64 x86_64; do
     -o "$scratch_path" \
     -framework Photos
 done
-/usr/bin/lipo "$BUILD_DIR/arm64" "$BUILD_DIR/x86_64" -create -output "$OUTPUT_DIR/bin/photos_bridge"
-/bin/chmod +x "$OUTPUT_DIR/bin/photos_bridge"
+/usr/bin/lipo \
+  "$BUILD_DIR/arm64" \
+  "$BUILD_DIR/x86_64" \
+  -create \
+  -output "$OUTPUT_DIR/bin/PhotoStewardPhotosBridge.app/Contents/MacOS/photos_bridge"
+/bin/chmod +x "$OUTPUT_DIR/bin/PhotoStewardPhotosBridge.app/Contents/MacOS/photos_bridge"
+cat > "$OUTPUT_DIR/bin/PhotoStewardPhotosBridge.app/Contents/Info.plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDisplayName</key>
+  <string>Photo Steward</string>
+  <key>CFBundleExecutable</key>
+  <string>photos_bridge</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.photosteward.photo-center</string>
+  <key>CFBundleName</key>
+  <string>Photo Steward Photos Bridge</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>NSPhotoLibraryUsageDescription</key>
+  <string>读取本机 Photos 图库，用于生成受控的 NAS 镜像计划。</string>
+</dict>
+</plist>
+PLIST
+/bin/ln -sfn \
+  "PhotoStewardPhotosBridge.app/Contents/MacOS/photos_bridge" \
+  "$OUTPUT_DIR/bin/photos_bridge"
 
 cat > "$OUTPUT_DIR/bin/python3" <<'PYTHON_WRAPPER'
 #!/bin/zsh
