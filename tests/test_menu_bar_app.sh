@@ -22,6 +22,10 @@ rg -Fq 'NavigationSplitView' "$SOURCE_DIR"
 for label in "打开控制台" "生成新计划" "待审计划" "确认并执行此计划"; do
   rg -Fq --glob '*.swift' "$label" "$SOURCE_DIR"
 done
+rg -Fq 'case settings' "$SOURCE_DIR/Views/ControlCenterView.swift"
+rg -Fq 'ConfigurationView' "$SOURCE_DIR/Views/ControlCenterView.swift"
+rg -Fq '保存并重新校验' "$SOURCE_DIR/Views/ConfigurationView.swift"
+rg -Fq 'mirrorPhotosRoot' "$SOURCE_DIR/Services/PhotoStewardRuntime.swift"
 
 store_source="$SOURCE_DIR/Services/PhotoCenterStore.swift"
 [[ "$(<"$store_source")" != *'probeNASAccess'* ]]

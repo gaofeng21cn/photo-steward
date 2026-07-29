@@ -44,7 +44,7 @@ struct PhotoCenterApp: App {
     @ViewBuilder
     private var rootView: some View {
         if runtime.isReady {
-            ControlCenterView(store: store)
+            ControlCenterView(store: store, runtime: runtime)
                 .onAppear {
                     if store.bundle.jobs.isEmpty {
                         store.refresh()

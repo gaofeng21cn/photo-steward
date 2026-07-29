@@ -55,7 +55,9 @@ Photo Steward 用来协调本机 macOS Photos 图库、iCloud Photos 与 NAS 镜
 下载 ZIP，解压后将 `Photo Steward.app` 移入 `~/Applications` 并打开。
 
 首次启动时，App 会先自动查找 `~/Pictures` 下的 Photos 图库；如果本机有多个图库，
-可以点击“更改”。你只需选择已经挂载的 NAS 照片镜像目录。
+可以点击“更改”。你只需选择已经挂载的 NAS 照片镜像目录。完成初始化后，仍可在
+控制台左侧的“设置”中查看实际生效的配置文件、挂载点和照片目录，或重新选择 NAS 目录；
+App 会再次校验挂载并更新后台任务。
 
 随后 App 会自动安装内置运行环境、`~/.local/bin` 下的 CLI、`~/.codex/skills`
 下的 `photo-steward` Skill，生成并校验私有配置，请求 Photos 访问权限，并安装

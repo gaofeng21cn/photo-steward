@@ -30,8 +30,10 @@ checks the real mounted filesystem.
 The public App runs the equivalent first-run setup automatically. The user
 selects a Photos library and a directory below a mounted NAS volume; Photo
 Steward detects the mount point and filesystem, derives the quarantine and
-receipt directories, writes the private profile, and validates it. Manual TOML
-editing is only needed for advanced migrations or optional adapters.
+receipt directories, writes the private profile, and validates it. After setup,
+the console's Settings section shows the active configuration path and the
+resolved NAS paths, and can repeat the same guarded setup flow to change them.
+Manual TOML editing is only needed for advanced migrations or optional adapters.
 
 The precedence order is:
 

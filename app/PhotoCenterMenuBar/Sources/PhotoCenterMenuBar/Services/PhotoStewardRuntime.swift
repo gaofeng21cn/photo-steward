@@ -111,6 +111,7 @@ enum RuntimeInstallerError: LocalizedError {
 final class PhotoStewardRuntimeController: ObservableObject {
     @Published private(set) var state: PhotoStewardSetupState = .preparing
     @Published private(set) var runtimeRoot: URL?
+    @Published private(set) var configSummary: RuntimeConfigSummary?
 
     private let installer = PhotoStewardRuntimeInstaller()
 
@@ -138,9 +139,12 @@ final class PhotoStewardRuntimeController: ObservableObject {
         do {
             let root = try installer.install()
             runtimeRoot = root
-            let configPath = FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Library/Application Support/Photo Steward/config.toml")
-            if FileManager.default.fileExists(atPath: configPath.path) {
+            let configPathResult = try run(
+                executable: root.appendingPathComponent("scripts/icloud-photo-sync"),
+                arguments: ["config", "path"]
+            )
+            let configPath = URL(fileURLWithPath: configPathResult.output.trimmingCharacters(in: .whitespacesAndNewlines))
+            if configPathResult.exitCode == 0, FileManager.default.fileExists(atPath: configPath.path) {
                 let result = try run(
                     executable: root.appendingPathComponent("scripts/icloud-photo-sync"),
                     arguments: ["config", "validate"]
@@ -150,10 +154,11 @@ final class PhotoStewardRuntimeController: ObservableObject {
                         RuntimeConfigSummary.self,
                         from: Data(result.output.utf8)
                     )
+                    self.configSummary = configSummary
                     if !agentsUseRuntime(root, configSummary: configSummary) {
                         let agentsResult = try run(
                             executable: root.appendingPathComponent("scripts/install_launchd_agents.sh"),
-                            arguments: agentInstallArguments(for: configSummary)
+                            arguments: Self.agentInstallArguments(for: configSummary)
                         )
                         try Self.requireSuccess(agentsResult, action: "更新后台同步任务")
                     }
@@ -170,6 +175,22 @@ final class PhotoStewardRuntimeController: ObservableObject {
     }
 
     func completeSetup(photosLibrary: URL, nasPhotos: URL, installAgents: Bool) {
+        configure(
+            photosLibrary: photosLibrary,
+            nasPhotos: nasPhotos,
+            installAgents: installAgents
+        )
+    }
+
+    func reconfigure(photosLibrary: URL, nasPhotos: URL, installAgents: Bool) {
+        configure(
+            photosLibrary: photosLibrary,
+            nasPhotos: nasPhotos,
+            installAgents: installAgents
+        )
+    }
+
+    private func configure(photosLibrary: URL, nasPhotos: URL, installAgents: Bool) {
         guard let runtimeRoot else {
             state = .failed("内置运行环境尚未准备好。")
             return
@@ -217,9 +238,14 @@ final class PhotoStewardRuntimeController: ObservableObject {
                     ),
                     action: "写入私有配置"
                 )
-                try Self.requireSuccess(
-                    try Self.runProcess(executable: cli, arguments: ["config", "validate"]),
-                    action: "校验私有配置"
+                let configResult = try Self.runProcess(
+                    executable: cli,
+                    arguments: ["config", "validate"]
+                )
+                try Self.requireSuccess(configResult, action: "读取私有配置")
+                let summary = try JSONDecoder().decode(
+                    RuntimeConfigSummary.self,
+                    from: Data(configResult.output.utf8)
                 )
                 try Self.requireSuccess(
                     try Self.runProcess(executable: cli, arguments: ["preflight"]),
@@ -228,11 +254,15 @@ final class PhotoStewardRuntimeController: ObservableObject {
                 if installAgents {
                     let agents = runtimeRoot.appendingPathComponent("scripts/install_launchd_agents.sh")
                     try Self.requireSuccess(
-                        try Self.runProcess(executable: agents, arguments: ["--photo-only"]),
+                        try Self.runProcess(
+                            executable: agents,
+                            arguments: Self.agentInstallArguments(for: summary)
+                        ),
                         action: "安装后台同步任务"
                     )
                 }
                 await MainActor.run {
+                    self.configSummary = summary
                     self.state = .ready
                 }
             } catch {
@@ -247,7 +277,7 @@ final class PhotoStewardRuntimeController: ObservableObject {
         try Self.runProcess(executable: executable, arguments: arguments)
     }
 
-    private func agentInstallArguments(for configSummary: RuntimeConfigSummary) -> [String] {
+    nonisolated private static func agentInstallArguments(for configSummary: RuntimeConfigSummary) -> [String] {
         var arguments: [String] = []
         if !configSummary.backupConfigured {
             arguments.append("--photo-only")
@@ -319,11 +349,19 @@ private struct ProcessResult: Sendable {
     let output: String
 }
 
-private struct RuntimeConfigSummary: Decodable {
+struct RuntimeConfigSummary: Decodable, Equatable {
+    let configPath: String
+    let photosLibrary: String
+    let mirrorMountRoot: String
+    let mirrorPhotosRoot: String
     let backupConfigured: Bool
     let todoExtensionConfigured: Bool
 
     enum CodingKeys: String, CodingKey {
+        case configPath = "config_path"
+        case photosLibrary = "photos_library"
+        case mirrorMountRoot = "mirror_mount_root"
+        case mirrorPhotosRoot = "mirror_photos_root"
         case backupConfigured = "backup_configured"
         case todoExtensionConfigured = "todo_extension_configured"
     }

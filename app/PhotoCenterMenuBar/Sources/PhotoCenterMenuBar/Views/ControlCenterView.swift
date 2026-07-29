@@ -4,6 +4,7 @@ enum ControlCenterSection: String, CaseIterable, Identifiable {
     case overview
     case planReview
     case activity
+    case settings
 
     var id: Self { self }
 
@@ -15,6 +16,8 @@ enum ControlCenterSection: String, CaseIterable, Identifiable {
             return "待审计划"
         case .activity:
             return "运行记录"
+        case .settings:
+            return "设置"
         }
     }
 
@@ -26,6 +29,8 @@ enum ControlCenterSection: String, CaseIterable, Identifiable {
             return "doc.text.magnifyingglass"
         case .activity:
             return "clock.arrow.circlepath"
+        case .settings:
+            return "gearshape"
         }
     }
 }
@@ -34,6 +39,7 @@ struct ControlCenterView: View {
     static let windowID = "photo-center-control-center"
 
     @ObservedObject var store: PhotoCenterStore
+    @ObservedObject var runtime: PhotoStewardRuntimeController
     @State private var selection: ControlCenterSection? = .overview
 
     var body: some View {
@@ -89,6 +95,8 @@ struct ControlCenterView: View {
             PlanReviewView(store: store)
         case .activity:
             ActivityView(store: store)
+        case .settings:
+            ConfigurationView(controller: runtime)
         }
     }
 
