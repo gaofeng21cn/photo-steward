@@ -216,23 +216,27 @@ App 仍可运行，但 Network Volumes 权限身份应在解锁后重新签名�
 
 ## 默认照片中心计划
 
+四项任务每周日错峰运行。保留独立任务是为了隔离 NAS 计划、待删池保留、
+OneDrive 备份和 ToDo 计划的权限、失败与收据边界；`.daily` 仅是兼容 label，
+不再表示每日频率。
+
 - `com.photosteward.plan.daily`
-  - 时间：每天 `03:15`
+  - 时间：每周日 `03:15`
   - stdout：`tmp/automation/plan.stdout.log`
   - stderr：`tmp/automation/plan.stderr.log`
 - `com.photosteward.deleted-pool.daily`
-  - 时间：每天 `04:00`
+  - 时间：每周日 `04:00`
   - stdout：`tmp/automation/deleted-pool.stdout.log`
   - stderr：`tmp/automation/deleted-pool.stderr.log`
 - `com.photosteward.onedrive.daily`
-  - 时间：每天 `04:15`
+  - 时间：每周日 `04:15`
   - stdout：`tmp/automation/onedrive.stdout.log`
   - stderr：`tmp/automation/onedrive.stderr.log`
 
 启用 ToDo 任务后，额外增加：
 
 - `com.photosteward.todo.daily`
-  - 时间：每天 `04:30`
+  - 时间：每周日 `04:30`
   - stdout：`tmp/automation/todo.stdout.log`
   - stderr：`tmp/automation/todo.stderr.log`
 

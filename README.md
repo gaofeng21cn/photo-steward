@@ -169,6 +169,7 @@ Install automation only after `config validate` and `preflight` pass:
 ./scripts/install_launchd_agents.sh
 ```
 
+The four isolated jobs run once each Sunday, staggered from 03:15 to 04:30.
 The default schedule creates a plan, runs quarantine retention, and can run an
 off-site backup. It does **not** apply a photo plan. Logs belong in
 `~/Library/Logs/Photo Steward/`; generated LaunchAgents contain a config path

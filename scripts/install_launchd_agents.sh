@@ -8,6 +8,7 @@ UID_VALUE="$(id -u)"
 INCLUDE_TODO=false
 PHOTO_ONLY=false
 CORE_ONLY=false
+SCHEDULE_WEEKDAY=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -67,7 +68,7 @@ write_plist() {
 
   "$PYTHON_BIN" - \
     "$plist_path" "$label" "$executable" "$ROOT_DIR" "$hour" "$minute" \
-    "$stdout_path" "$stderr_path" "$PHOTO_STEWARD_CONFIG" <<'PY'
+    "$SCHEDULE_WEEKDAY" "$stdout_path" "$stderr_path" "$PHOTO_STEWARD_CONFIG" <<'PY'
 from pathlib import Path
 import plistlib
 import sys
@@ -79,6 +80,7 @@ import sys
     working_directory,
     hour,
     minute,
+    weekday,
     stdout_path,
     stderr_path,
     config_path,
@@ -89,7 +91,11 @@ payload = {
     "ProgramArguments": [executable],
     "WorkingDirectory": working_directory,
     "RunAtLoad": False,
-    "StartCalendarInterval": {"Hour": int(hour), "Minute": int(minute)},
+    "StartCalendarInterval": {
+        "Weekday": int(weekday),
+        "Hour": int(hour),
+        "Minute": int(minute),
+    },
     "EnvironmentVariables": {"PHOTO_STEWARD_CONFIG": config_path},
     "StandardOutPath": stdout_path,
     "StandardErrorPath": stderr_path,

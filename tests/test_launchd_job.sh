@@ -25,6 +25,8 @@ assert_mapping '$TODO_LABEL' "run_todo_plan.sh"
 [[ "$installer_text" == *"EnvironmentVariables"* ]]
 [[ "$installer_text" == *"plistlib.dump"* ]]
 [[ "$installer_text" == *"plutil -lint"* ]]
+[[ "$installer_text" == *"SCHEDULE_WEEKDAY=0"* ]]
+[[ "$installer_text" == *'"Weekday": int(weekday)'* ]]
 [[ "$installer_text" == *'Library/Logs/Photo Steward'* ]]
 [[ "$installer_text" != *'nasMountURL'* ]]
 [[ "$installer_text" != *'tmp/automation'* ]]
