@@ -452,7 +452,7 @@ final class PhotoCenterStore: ObservableObject {
         if output.localizedCaseInsensitiveContains("external mount is not present")
             || output.localizedCaseInsensitiveContains("path is not backed by a mounted filesystem")
         {
-            return "\(operation)前未找到 NAS 挂载点。请先在 Finder 中连接 NAS，使 /Volumes/home 出现后再重试。"
+            return "\(operation)前未找到已配置的 NAS 挂载点。请先在 Finder 中连接 NAS，再按“设置”中显示的路径重试。"
         }
         return "\(operation)失败：\(output)。计划仍保留待审状态，请检查日志后重试。"
     }
@@ -463,10 +463,10 @@ final class PhotoCenterStore: ObservableObject {
             || output.localizedCaseInsensitiveContains("external mount is not present")
             || output.localizedCaseInsensitiveContains("path is not backed by a mounted filesystem")
         {
-            return "\(operation)失败：未找到 NAS 挂载点。请先在 Finder 中连接 NAS，使 /Volumes/home 出现后再重试。"
+            return "\(operation)失败：未找到已配置的 NAS 挂载点。请先在 Finder 中连接 NAS，再按“设置”中显示的路径重试。"
         }
         if output.localizedCaseInsensitiveContains("unexpected filesystem") {
-            return "\(operation)失败：/Volumes/home 不是可用的 SMB NAS 挂载。请在 Finder 中重新连接 NAS 后再重试。"
+            return "\(operation)失败：已配置路径不是可用的 SMB NAS 挂载。请在 Finder 中重新连接 NAS，或在“设置”中更正路径。"
         }
         return "\(operation)失败：\(output)。请检查本机配置、NAS 挂载和 CLI 安装。"
     }

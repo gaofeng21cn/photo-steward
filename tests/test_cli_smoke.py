@@ -151,7 +151,7 @@ def test_preflight_reports_mount_failure_without_traceback(monkeypatch, tmp_path
 
     def fail_preflight(*args, **kwargs):
         raise MountContractError(
-            "external mount is not present for /Volumes/home; refusing local-root fallback"
+            "external mount is not present for /Volumes/photo-nas; refusing local-root fallback"
         )
 
     monkeypatch.setattr(cli, "inspect_mount", fail_preflight)

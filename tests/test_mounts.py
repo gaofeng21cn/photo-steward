@@ -96,4 +96,4 @@ def test_inspect_mount_reports_missing_external_mount_for_absent_volume() -> Non
         )
 
     with pytest.raises(MountContractError, match="external mount is not present"):
-        inspect_mount(Path("/Volumes/home"), command_runner=fake_runner)
+        inspect_mount(Path("/Volumes/photo-nas"), command_runner=fake_runner)
