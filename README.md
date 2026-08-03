@@ -79,7 +79,8 @@ you can change it if the Mac has more than one library. Select the mounted NAS
 photo mirror directory, and the wizard installs the CLI at `~/.local/bin`,
 installs the `photo-steward` Codex Skill under `~/.codex/skills`, writes the
 private configuration, requests Photos permission, and installs the
-photo-only `launchd` jobs. No Python, Swift, repository checkout, or manual
+weekly Mac orchestrator and guarded NAS-maintenance fallback. No Python,
+Swift, repository checkout, or manual
 TOML editing is required.
 
 The source checkout also contains developer-only installers:
@@ -169,11 +170,18 @@ Install automation only after `config validate` and `preflight` pass:
 ./scripts/install_launchd_agents.sh
 ```
 
-The four isolated jobs run once each Sunday, staggered from 03:15 to 04:30.
-The default schedule creates a plan, runs quarantine retention, and can run an
-off-site backup. It does **not** apply a photo plan. Logs belong in
-`~/Library/Logs/Photo Steward/`; generated LaunchAgents contain a config path
-but no credentials. Folder and ToDo adapters are optional advanced extensions.
+The Mac installs one weekly orchestrator at Sunday 03:15. It creates a photo
+plan and, when configured, a ToDo plan; it never applies either plan. Until a
+verified Synology handoff exists, a second Sunday 04:00 fallback serializes the
+NAS-to-OneDrive backup and a quarantine-retention audit. Retention is dry-run
+by default. Logs belong in `~/Library/Logs/Photo Steward/`; generated
+LaunchAgents contain a config path but no credentials.
+
+Synology deployment is intentionally guarded. The NAS worker can be installed
+and dry-run over SSH, but the Mac fallback is disabled only after a local
+handoff receipt confirms that DSM Task Scheduler is installed and Cloud Sync
+is upload-only without deleting cloud objects when the NAS source disappears.
+See [`docs/automation.md`](./docs/automation.md).
 
 ## Architecture
 

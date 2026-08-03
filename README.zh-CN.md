@@ -61,7 +61,7 @@ App 会再次校验挂载并更新后台任务。
 
 随后 App 会自动安装内置运行环境、`~/.local/bin` 下的 CLI、`~/.codex/skills`
 下的 `photo-steward` Skill，生成并校验私有配置，请求 Photos 访问权限，并安装
-照片同步的 `launchd` 后台任务。如果已有配置损坏，重新完成向导会安全地重建这份
+每周 Mac 调度器和受控的 NAS 维护回退任务。如果已有配置损坏，重新完成向导会安全地重建这份
 私有配置。不需要安装 Python、Swift，不需要 clone 仓库，也不需要手工编辑 TOML。
 
 仓库中的安装脚本只面向开发和测试：
@@ -135,7 +135,9 @@ macOS App 读取默认私有路径。`launchd` 会把选择的配置路径明确
 ./scripts/install_launchd_agents.sh
 ```
 
-四个隔离任务会在每周日 `03:15` 至 `04:30` 错峰各运行一次。默认任务会生成照片计划、执行待删池保留期处理，并可运行异地备份；它**不会**自动执行照片计划。日志位于 `~/Library/Logs/Photo Steward/`。生成的 LaunchAgent 只保存配置文件路径，不保存任何凭据。通用目录同步和 ToDo 同步属于高级扩展，不在照片中心的公共快速开始路径中。
+Mac 每周日 `03:15` 运行一个统一调度器，生成照片计划；配置了 ToDo 扩展时，照片计划无论成功与否都会继续生成 ToDo 计划。它**不会**自动执行任何计划。DSM 尚未形成权威接管回执时，Mac 还会在 `04:00` 串行执行 NAS 到 OneDrive 的备份和待删池保留期审计；保留期处理默认仅预演，不会删除文件。日志位于 `~/Library/Logs/Photo Steward/`。
+
+NAS 分工采用渐进迁移。可以先通过 SSH 安装 NAS worker 并执行 dry-run，但只有同时确认 DSM Task Scheduler 已安装、Cloud Sync 为仅上传、且 NAS 源删除不会删除 OneDrive 目的端后，App 才会停用 Mac 回退任务。详细操作和接管回执格式见 [`docs/automation.md`](./docs/automation.md)。
 
 ## 架构
 

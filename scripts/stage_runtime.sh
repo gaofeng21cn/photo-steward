@@ -35,6 +35,7 @@ mkdir -p \
   "$OUTPUT_DIR/bin/PhotoStewardPhotosBridge.app/Contents/MacOS" \
   "$OUTPUT_DIR/vendor" \
   "$OUTPUT_DIR/scripts/lib" \
+  "$OUTPUT_DIR/scripts/nas" \
   "$OUTPUT_DIR/skills/photo-steward" \
   "$OUTPUT_DIR/skills/icloud-photo-center"
 
@@ -44,6 +45,8 @@ mkdir -p \
 /usr/bin/ditto "$ROOT_DIR/scripts/lib/automation_common.sh" "$OUTPUT_DIR/scripts/lib/automation_common.sh"
 for script_name in \
   icloud-photo-sync \
+  run_weekly_orchestrator.sh \
+  run_nas_maintenance.sh \
   run_plan.sh \
   run_apply_latest.sh \
   run_deleted_pool_retention.sh \
@@ -53,6 +56,8 @@ for script_name in \
   install_launchd_todo_agent.sh; do
   /usr/bin/ditto "$ROOT_DIR/scripts/$script_name" "$OUTPUT_DIR/scripts/$script_name"
 done
+/usr/bin/ditto "$ROOT_DIR/scripts/nas/photo_steward_nas_worker.py" "$OUTPUT_DIR/scripts/nas/photo_steward_nas_worker.py"
+/usr/bin/ditto "$ROOT_DIR/scripts/nas/install_synology_worker.sh" "$OUTPUT_DIR/scripts/nas/install_synology_worker.sh"
 /usr/bin/rsync -a --exclude '__pycache__' --exclude '*.pyc' "$TOMLI_SOURCE/" "$OUTPUT_DIR/vendor/tomli/"
 /usr/bin/ditto "$PYTHON_FRAMEWORK" "$OUTPUT_DIR/Python3.framework"
 /bin/rm -rf "$OUTPUT_DIR/Python3.framework/Versions/3.9/lib/python3.9/site-packages"

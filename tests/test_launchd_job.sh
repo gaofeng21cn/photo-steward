@@ -14,10 +14,8 @@ assert_mapping() {
   print -r -- "$normalized_installer_text" | rg -U -Fq -- "$expected"
 }
 
-assert_mapping "com.photosteward.plan.daily" "run_plan.sh"
-assert_mapping "com.photosteward.deleted-pool.daily" "run_deleted_pool_retention.sh"
-assert_mapping "com.photosteward.onedrive.daily" "run_onedrive_backup.sh"
-assert_mapping '$TODO_LABEL' "run_todo_plan.sh"
+assert_mapping '$WEEKLY_LABEL' "run_weekly_orchestrator.sh"
+assert_mapping "com.photosteward.nas-maintenance.weekly" "run_nas_maintenance.sh"
 
 [[ "$installer_text" != *"APP_EXECUTABLE"* ]]
 [[ "$installer_text" != *"--run-job"* ]]
@@ -31,9 +29,21 @@ assert_mapping '$TODO_LABEL' "run_todo_plan.sh"
 [[ "$installer_text" != *'nasMountURL'* ]]
 [[ "$installer_text" != *'tmp/automation'* ]]
 [[ "$installer_text" == *'*.icloud-photo-sync.*.plist(N)'* ]]
+[[ "$installer_text" == *'PHOTO_STEWARD_INCLUDE_TODO'* ]]
+[[ "$installer_text" == *'PHOTO_STEWARD_INCLUDE_ONEDRIVE'* ]]
+[[ "$installer_text" == *'nas_external_receipt_is_valid'* ]]
+[[ "$installer_text" != *'DSM Task Scheduler owns NAS maintenance'* ]]
+
+for retired_label in \
+  com.photosteward.plan.daily \
+  com.photosteward.todo.daily \
+  com.photosteward.deleted-pool.daily \
+  com.photosteward.onedrive.daily; do
+  [[ "$installer_text" == *"\"$retired_label\""* ]]
+done
 
 app_source="$(<"$ROOT_DIR/app/PhotoCenterMenuBar/Sources/PhotoCenterMenuBar/main.swift")"
 [[ "$app_source" != *"--run-job"* ]]
 [[ "$app_source" != *"runScheduledJobIfRequested"* ]]
 
-print "launchd_job: scheduled jobs map to wrappers with one private config contract"
+print "launchd_job: weekly orchestrator and guarded NAS fallback share one private config contract"

@@ -285,19 +285,43 @@ final class PhotoStewardRuntimeController: ObservableObject {
         if configSummary.todoExtensionConfigured {
             arguments.append("--include-todo")
         }
+        if nasJobsAreExternal {
+            arguments.append("--nas-jobs-external")
+        }
         return arguments
+    }
+
+    nonisolated private static var nasJobsAreExternal: Bool {
+        let receiptURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Photo Steward/nas-jobs-external")
+        guard let data = try? Data(contentsOf: receiptURL),
+              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              payload["schema_version"] as? Int == 1,
+              payload["status"] as? String == "verified",
+              payload["scheduler"] as? String == "synology_dsm_task_scheduler",
+              payload["scheduler_status"] as? String == "installed",
+              let cloudSync = payload["cloud_sync"] as? [String: Any],
+              cloudSync["direction"] as? String == "upload_only",
+              cloudSync["delete_destination_on_source_delete"] as? Bool == false
+        else {
+            return false
+        }
+        return true
     }
 
     private func agentsUseRuntime(_ runtimeRoot: URL, configSummary: RuntimeConfigSummary) -> Bool {
         let launchAgents = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/LaunchAgents", isDirectory: true)
-        let contracts: [(String, String, Bool)] = [
-            ("com.photosteward.plan.daily", "run_plan.sh", true),
-            ("com.photosteward.deleted-pool.daily", "run_deleted_pool_retention.sh", true),
-            ("com.photosteward.onedrive.daily", "run_onedrive_backup.sh", configSummary.backupConfigured),
-            ("com.photosteward.todo.daily", "run_todo_plan.sh", configSummary.todoExtensionConfigured),
+        let nasJobsExternal = Self.nasJobsAreExternal
+        let contracts: [(String, String, Bool, Int, Int)] = [
+            ("com.photosteward.weekly", "run_weekly_orchestrator.sh", true, 3, 15),
+            ("com.photosteward.nas-maintenance.weekly", "run_nas_maintenance.sh", !nasJobsExternal, 4, 0),
+            ("com.photosteward.plan.daily", "run_plan.sh", false, 0, 0),
+            ("com.photosteward.todo.daily", "run_todo_plan.sh", false, 0, 0),
+            ("com.photosteward.deleted-pool.daily", "run_deleted_pool_retention.sh", false, 0, 0),
+            ("com.photosteward.onedrive.daily", "run_onedrive_backup.sh", false, 0, 0),
         ]
-        for (label, scriptName, enabled) in contracts {
+        for (label, scriptName, enabled, expectedHour, expectedMinute) in contracts {
             let plist = launchAgents.appendingPathComponent("\(label).plist")
             if !enabled {
                 if FileManager.default.fileExists(atPath: plist.path) {
@@ -310,9 +334,27 @@ final class PhotoStewardRuntimeController: ObservableObject {
                   let payload = try? PropertyListSerialization.propertyList(from: data, format: nil),
                   let dictionary = payload as? [String: Any],
                   let arguments = dictionary["ProgramArguments"] as? [String],
-                  arguments.first == executable
+                  arguments.first == executable,
+                  let environment = dictionary["EnvironmentVariables"] as? [String: String],
+                  environment["PHOTO_STEWARD_CONFIG"] == configSummary.configPath,
+                  let schedule = dictionary["StartCalendarInterval"] as? [String: Int],
+                  schedule["Weekday"] == 0,
+                  schedule["Hour"] == expectedHour,
+                  schedule["Minute"] == expectedMinute
             else {
                 return false
+            }
+            if label == "com.photosteward.weekly" {
+                let includesTodo = environment["PHOTO_STEWARD_INCLUDE_TODO"] == "true"
+                if includesTodo != configSummary.todoExtensionConfigured {
+                    return false
+                }
+            }
+            if label == "com.photosteward.nas-maintenance.weekly" {
+                let includesOneDrive = environment["PHOTO_STEWARD_INCLUDE_ONEDRIVE"] == "true"
+                if includesOneDrive != configSummary.backupConfigured {
+                    return false
+                }
             }
         }
         return true

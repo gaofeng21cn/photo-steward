@@ -15,6 +15,10 @@ RUNTIME_DIR="$ROOT_DIR/tmp/test-runtime-bundle"
 [[ -f "$RUNTIME_DIR/.runtime-manifest" ]]
 [[ -f "$RUNTIME_DIR/skills/photo-steward/SKILL.md" ]]
 [[ -f "$RUNTIME_DIR/skills/icloud-photo-center/SKILL.md" ]]
+[[ -x "$RUNTIME_DIR/scripts/run_weekly_orchestrator.sh" ]]
+[[ -x "$RUNTIME_DIR/scripts/run_nas_maintenance.sh" ]]
+[[ -x "$RUNTIME_DIR/scripts/nas/photo_steward_nas_worker.py" ]]
+[[ -x "$RUNTIME_DIR/scripts/nas/install_synology_worker.sh" ]]
 
 file "$RUNTIME_DIR/bin/PhotoStewardPhotosBridge.app/Contents/MacOS/photos_bridge" | rg -Fq 'universal binary'
 file "$RUNTIME_DIR/Python3.framework/Versions/3.9/bin/python3" | rg -Fq 'universal binary'

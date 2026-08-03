@@ -20,7 +20,13 @@ if ! wait_for_nas_mount; then
   exit 75
 fi
 
-if photo_cli prune-deleted-pool "$@"; then
+typeset -a retention_arguments
+retention_arguments=("$@")
+if [[ "${PHOTO_STEWARD_APPLY_RETENTION:-false}" != true ]]; then
+  retention_arguments+=("--dry-run")
+fi
+
+if photo_cli prune-deleted-pool "${retention_arguments[@]}"; then
   exit 0
 else
   exit_code=$?

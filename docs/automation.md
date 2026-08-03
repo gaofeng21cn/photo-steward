@@ -25,14 +25,14 @@ macOS App 可以由操作者手工生成计划、审阅待审计划，并在明�
 ## 当前策略
 
 - 自动执行 `plan-job`
-- 自动执行待删池保留期清理
-- 自动执行 `NAS -> OneDrive` 备份
+- 自动审计待删池保留期候选，默认不删除
+- 在 NAS 尚未接管时，由 Mac 串行执行 `NAS -> OneDrive` 备份和保留期审计
 - `apply-job` 仍保持人工触发
-- ToDo `todo-plan-job` 需要单独安装，不并入照片中心默认健康状态
+- ToDo `todo-plan-job` 为可选项，与照片计划共享每周调度，但保持独立业务状态
 
 这样可以把“发现变化”和“真正改文件”拆开：
 
-- 每天稳定得到最新同步判断
+- 每周稳定得到最新同步判断
 - 对 NAS 的新增复制与待删移动仍然保留人工门槛
 - 待删池和异地备份都有独立的留痕与状态文件
 
@@ -165,6 +165,8 @@ python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_l
 
 - `scripts/run_plan.sh`
 - `scripts/run_todo_plan.sh`
+- `scripts/run_weekly_orchestrator.sh`
+- `scripts/run_nas_maintenance.sh`
 - `scripts/run_apply_latest.sh`
 - `scripts/run_deleted_pool_retention.sh`
 - `scripts/run_onedrive_backup.sh`
@@ -182,20 +184,19 @@ python3 -m tools.icloud_photo_sync.cli todo-apply --plan-dir state/folder_sync_l
 ./scripts/install_launchd_agents.sh
 ```
 
-默认只安装照片中心的三条任务。ToDo 计划发现是显式 opt-in：
+默认安装两条任务：依赖本机 Photos 的每周调度器，以及 DSM 尚未接管时的
+NAS 维护回退。ToDo 计划发现是显式 opt-in：
 
 ```bash
 ./scripts/install_launchd_todo_agent.sh
 ```
 
-安装脚本会先构建并签名菜单栏 App，随后让各 plist 的
+安装脚本会先构建并签名菜单栏 App，随后让 plist 的
 `ProgramArguments` 直接指向对应 wrapper：
 
 ```text
-plan         -> scripts/run_plan.sh
-deleted-pool -> scripts/run_deleted_pool_retention.sh
-onedrive     -> scripts/run_onedrive_backup.sh
-todo         -> scripts/run_todo_plan.sh
+weekly          -> scripts/run_weekly_orchestrator.sh
+nas-maintenance -> scripts/run_nas_maintenance.sh
 ```
 
 wrapper 仍调用同一个 CLI，不复制计划、Apply、guard 或 receipt 逻辑。直接
@@ -216,29 +217,63 @@ App 仍可运行，但 Network Volumes 权限身份应在解锁后重新签名�
 
 ## 默认照片中心计划
 
-四项任务每周日错峰运行。保留独立任务是为了隔离 NAS 计划、待删池保留、
-OneDrive 备份和 ToDo 计划的权限、失败与收据边界；`.daily` 仅是兼容 label，
-不再表示每日频率。
-
-- `com.photosteward.plan.daily`
+- `com.photosteward.weekly`
   - 时间：每周日 `03:15`
-  - stdout：`tmp/automation/plan.stdout.log`
-  - stderr：`tmp/automation/plan.stderr.log`
-- `com.photosteward.deleted-pool.daily`
+  - 顺序：照片 `plan-job`，然后是可选的 `todo-plan-job`
+  - stdout/stderr：`~/Library/Logs/Photo Steward/weekly.*.log`
+  - 子任务失败后继续后续任务；聚合收据区分进程状态和业务状态
+- `com.photosteward.nas-maintenance.weekly`
   - 时间：每周日 `04:00`
-  - stdout：`tmp/automation/deleted-pool.stdout.log`
-  - stderr：`tmp/automation/deleted-pool.stderr.log`
-- `com.photosteward.onedrive.daily`
-  - 时间：每周日 `04:15`
-  - stdout：`tmp/automation/onedrive.stdout.log`
-  - stderr：`tmp/automation/onedrive.stderr.log`
+  - 顺序：可选 OneDrive 备份，然后是待删池 dry-run 审计
+  - stdout/stderr：`~/Library/Logs/Photo Steward/nas-maintenance.*.log`
+  - 仅在 DSM 尚未形成有效接管回执时安装
 
-启用 ToDo 任务后，额外增加：
+升级时会卸载旧的 `plan.daily`、`todo.daily`、`deleted-pool.daily` 和
+`onedrive.daily` plist，避免重复调度。系统内部可能仍保留旧 label 的 enabled
+override；只要没有 plist、loaded service 或进程，它不构成实际任务。
 
-- `com.photosteward.todo.daily`
-  - 时间：每周日 `04:30`
-  - stdout：`tmp/automation/todo.stdout.log`
-  - stderr：`tmp/automation/todo.stderr.log`
+## Synology 分工
+
+NAS worker 只使用 NAS 本地路径，不依赖 macOS Photos.framework：
+
+```bash
+PHOTO_STEWARD_NAS_HOST=user@nas.local \
+  ./scripts/nas/install_synology_worker.sh
+```
+
+安装器会上传 worker、执行一次 `--dry-run`，并在 NAS 写入
+`~/.local/share/photo-steward/deployment.json`。它不会创建 DSM Task Scheduler
+任务，也不会修改 Cloud Sync；这两项需要 DSM 管理员在权威界面完成。
+
+DSM 每周任务建议命令：
+
+```bash
+~/.local/share/photo-steward/photo_steward_nas_worker.py --nas-home "$HOME"
+```
+
+默认行为是备份加 retention 审计，备份不带 `--delete`，retention 不删除。
+只有在审阅最新 NAS receipt 的 `candidate_roots` 后，才可针对一次明确操作增加
+`--apply-retention`。不要把永久删除放入无人值守的默认调度。
+
+停用 Mac 回退前，必须在
+`~/Library/Application Support/Photo Steward/nas-jobs-external` 写入经过人工核验的
+私有 JSON 回执：
+
+```json
+{
+  "schema_version": 1,
+  "status": "verified",
+  "scheduler": "synology_dsm_task_scheduler",
+  "scheduler_status": "installed",
+  "cloud_sync": {
+    "direction": "upload_only",
+    "delete_destination_on_source_delete": false
+  }
+}
+```
+
+随后重新运行 `install_launchd_agents.sh --nas-jobs-external`。缺少或篡改这份回执
+时，安装器会拒绝切换，App 也会继续恢复 Mac 回退任务。
 
 ## 状态与留痕
 
@@ -258,6 +293,8 @@ OneDrive 备份和 ToDo 计划的权限、失败与收据边界；`.daily` 仅�
 - `plan` / `apply`：`<nas-mount>/Photos_SyncLogs/YYYY-MM-DD/<plan_id>/`
 - `deleted-pool` / `onedrive`：`<nas-mount>/Photos_SyncLogs/YYYY-MM-DD/<job_id>.json`
 - `todo-plan` / `todo-apply`：`state/folder_sync_logs/YYYY-MM-DD/<plan_id>/`
+- Mac weekly 聚合：`<runtime_state_dir>/scheduler/latest_weekly.json`
+- NAS worker：`<nas-home>/Photos_SyncLogs/YYYY-MM-DD/nas-maintenance-*.json`
 
 JSON 状态保留 `last_attempt_at`、`last_success_at`、`consecutive_failures`、
 `pending_plan_dir` 和真实 `mount` 身份。失败不会再覆盖最后一次成功证据。
@@ -286,21 +323,14 @@ python3 -m tools.icloud_photo_sync.cli backup-onedrive --dry-run
 然后再检查：
 
 - `state/status/latest_overview.md`
-- `tmp/automation/*.log`
+- `~/Library/Logs/Photo Steward/*.log`
 - `<nas-mount>/Photos_SyncLogs/YYYY-MM-DD/`
 
 如果要直接触发 `launchd`：
 
 ```bash
-launchctl kickstart -k gui/$(id -u)/com.photosteward.plan.daily
-launchctl kickstart -k gui/$(id -u)/com.photosteward.deleted-pool.daily
-launchctl kickstart -k gui/$(id -u)/com.photosteward.onedrive.daily
-```
-
-如已启用 ToDo 任务，再单独 kickstart：
-
-```bash
-launchctl kickstart -k gui/$(id -u)/com.photosteward.todo.daily
+launchctl kickstart -k gui/$(id -u)/com.photosteward.weekly
+launchctl kickstart -k gui/$(id -u)/com.photosteward.nas-maintenance.weekly
 ```
 
 ## 边界
@@ -308,5 +338,5 @@ launchctl kickstart -k gui/$(id -u)/com.photosteward.todo.daily
 - `apply` 暂不自动化，这是故意保留的人为确认门槛
 - `OneDrive` 不参与同步判断，也不执行跟删
 - `Photos.sqlite` 现在只作为本地 originals 的可选加速器；若不可读，`plan` 仍应通过 Photos 元数据链路完成判断并把警告写入 `plan_summary.json`
-- `ToDo` 已接入独立的 `todo-plan-job` 定时发现，但 `todo-apply` 仍保持手工触发
+- `ToDo` 已接入每周调度中的独立 `todo-plan-job`，但 `todo-apply` 仍保持手工触发
 - 照片与 ToDo 使用独立状态总览；共享代码不代表共享产品状态
