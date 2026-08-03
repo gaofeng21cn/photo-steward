@@ -10,17 +10,20 @@ if [ -z "$NAS_HOST" ]; then
 fi
 
 ROOT_DIR="$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)"
+run_ssh() {
+  ssh -o BatchMode=yes "$NAS_HOST" "$@"
+}
 if [ -z "$REMOTE_HOME" ]; then
-  REMOTE_HOME="$(ssh "$NAS_HOST" 'printf %s "$HOME"')"
+  REMOTE_HOME="$(run_ssh 'printf %s "$HOME"')"
 fi
 REMOTE_DIR="$REMOTE_HOME/.local/share/photo-steward"
 
-ssh "$NAS_HOST" "mkdir -p '$REMOTE_DIR'"
-rsync -a "$ROOT_DIR/scripts/nas/photo_steward_nas_worker.py" "$NAS_HOST:$REMOTE_DIR/photo_steward_nas_worker.py"
-DRY_RUN_RECEIPT="$(ssh "$NAS_HOST" "chmod 755 '$REMOTE_DIR/photo_steward_nas_worker.py'; '$REMOTE_DIR/photo_steward_nas_worker.py' --nas-home '$REMOTE_HOME' --dry-run")"
+run_ssh "mkdir -p '$REMOTE_DIR'"
+rsync -a -e 'ssh -o BatchMode=yes' "$ROOT_DIR/scripts/nas/photo_steward_nas_worker.py" "$NAS_HOST:$REMOTE_DIR/photo_steward_nas_worker.py"
+DRY_RUN_RECEIPT="$(run_ssh "chmod 755 '$REMOTE_DIR/photo_steward_nas_worker.py'; '$REMOTE_DIR/photo_steward_nas_worker.py' --nas-home '$REMOTE_HOME' --dry-run")"
 printf '%s\n' "$DRY_RUN_RECEIPT"
 
-ssh "$NAS_HOST" "python3 - '$REMOTE_DIR' '$DRY_RUN_RECEIPT'" <<'PY'
+run_ssh "python3 - '$REMOTE_DIR' '$DRY_RUN_RECEIPT'" <<'PY'
 from datetime import datetime, timezone
 import hashlib
 import json
