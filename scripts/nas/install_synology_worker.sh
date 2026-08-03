@@ -41,8 +41,8 @@ payload = {
     "worker_path": str(worker),
     "worker_sha256": hashlib.sha256(worker.read_bytes()).hexdigest(),
     "dry_run_receipt": str(worker_receipt),
-    "scheduler": "synology_dsm_task_scheduler",
-    "scheduler_status": "not_installed",
+    "scheduler": "manual",
+    "scheduler_status": "manual_only",
     "cloud_sync_status": "not_verified",
 }
 (remote_dir / "deployment.json").write_text(
@@ -54,13 +54,10 @@ PY
 cat <<EOF
 NAS worker installed and dry-run receipt verified.
 
-Create one DSM Task Scheduler entry as this NAS user:
-  Schedule: weekly, Sunday, 04:00
-  Command: $REMOTE_DIR/photo_steward_nas_worker.py --nas-home $REMOTE_HOME
+Photo Steward does not install or recommend a DSM schedule. Run the worker
+manually when storage maintenance is needed:
+  $REMOTE_DIR/photo_steward_nas_worker.py --nas-home $REMOTE_HOME
 
 Retention remains audit-only. Add --apply-retention only after reviewing the
 candidate_roots in the latest NAS receipt and explicitly approving deletion.
-
-Do not disable the Mac fallback jobs until DSM Task Scheduler and Cloud Sync
-have been verified and recorded in the local nas-jobs-external receipt.
 EOF

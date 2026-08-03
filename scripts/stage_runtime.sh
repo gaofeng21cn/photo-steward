@@ -45,15 +45,12 @@ mkdir -p \
 /usr/bin/ditto "$ROOT_DIR/scripts/lib/automation_common.sh" "$OUTPUT_DIR/scripts/lib/automation_common.sh"
 for script_name in \
   icloud-photo-sync \
-  run_weekly_orchestrator.sh \
-  run_nas_maintenance.sh \
   run_plan.sh \
   run_apply_latest.sh \
   run_deleted_pool_retention.sh \
   run_onedrive_backup.sh \
   run_todo_plan.sh \
-  install_launchd_agents.sh \
-  install_launchd_todo_agent.sh; do
+  retire_launchd_agents.sh; do
   /usr/bin/ditto "$ROOT_DIR/scripts/$script_name" "$OUTPUT_DIR/scripts/$script_name"
 done
 /usr/bin/ditto "$ROOT_DIR/scripts/nas/photo_steward_nas_worker.py" "$OUTPUT_DIR/scripts/nas/photo_steward_nas_worker.py"

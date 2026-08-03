@@ -287,14 +287,12 @@ python3 -m tools.icloud_photo_sync.cli apply --plan-dir <nas-mount>/Photos_SyncL
 - `apply` 不会硬删 NAS-only 文件
 - 所有待删项先进入 `Photos_DeletedFromICloud/YYYY-MM-DD/<plan_id>/`
 
-### 8.2 第二层：全自动
+### 8.2 运行方式：手动
 
-- 每日或每周定时执行
-- 自动把：
-  - iCloud 新增复制到 NAS
-  - iCloud 删除移动到 NAS 待删池
-- 自动生成日志
-- 到期自动清空待删池
+- 用户需要检查差异时手动生成计划
+- 完整审阅镜像、隔离和未决项
+- 只对精确计划目录显式执行 apply
+- 待删池清理保持独立审计和独立批准，不自动执行
 
 OneDrive 则只做：
 

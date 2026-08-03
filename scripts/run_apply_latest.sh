@@ -24,15 +24,5 @@ if [[ "${1:-}" == "--plan-dir" ]]; then
   exit $?
 fi
 
-if [[ "${1:-}" == "--latest" ]]; then
-  PLAN_DIR="$(photo_cli latest-plan)"
-if [[ -z "$PLAN_DIR" ]]; then
-    echo "no plan found" >&2
-    exit 1
-  fi
-  photo_cli apply-job --plan-dir "$PLAN_DIR"
-  exit $?
-fi
-
-echo "usage: $0 --plan-dir <plan_dir> | --latest" >&2
+echo "usage: $0 --plan-dir <plan_dir>" >&2
 exit 2

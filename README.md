@@ -25,8 +25,8 @@ installations retain `icloud-photo-sync` (CLI) and `icloud-photo-center`
 
 - **iCloud Photos remains the unique authority.** NAS and off-site copies are
   mirrors or backups; they never decide what is current in Photos.
-- **Plans precede mutations.** Scheduled work can discover differences, but it
-  cannot silently apply a plan.
+- **Plans precede mutations.** A plan is created only when the user asks for
+  one; background jobs do not scan or apply photo changes.
 - **Mirror-only files go to quarantine.** They move into a dated, reviewable
   location instead of being hard-deleted.
 - **A successful receipt is required.** Status changes only after the exact
@@ -42,7 +42,7 @@ installations retain `icloud-photo-sync` (CLI) and `icloud-photo-center`
 5. Read the resulting receipt and status summary.
 
 The menu-bar app is a control console, not a second sync engine. It calls the
-same deterministic CLI used by the Codex Skill and `launchd`.
+same deterministic CLI used by the Codex Skill.
 
 ### Privacy and data
 
@@ -78,8 +78,8 @@ The first-run wizard normally discovers the Photos library in `~/Pictures`;
 you can change it if the Mac has more than one library. Select the mounted NAS
 photo mirror directory, and the wizard installs the CLI at `~/.local/bin`,
 installs the `photo-steward` Codex Skill under `~/.codex/skills`, writes the
-private configuration, requests Photos permission, and installs the
-weekly Mac orchestrator and guarded NAS-maintenance fallback. No Python,
+private configuration, and requests Photos permission. It does not install
+Mac or NAS schedules. No Python,
 Swift, repository checkout, or manual
 TOML editing is required.
 
@@ -152,36 +152,29 @@ will discover the Skill after installation.
 Configuration precedence is: an operation-specific CLI option, global
 `--config`, `PHOTO_STEWARD_CONFIG`, legacy `ICLOUD_PHOTO_SYNC_CONFIG`, the
 private active-config pointer, then the default private path. `config activate`
-updates the private pointer so the macOS app and LaunchAgents use the same
+updates the private pointer so the macOS app and manual CLI use the same
 profile. The global option precedes the subcommand:
 
 ```bash
 photo-steward --config /absolute/path/config.toml preflight
 ```
 
-The macOS app reads the default private path. `launchd` records the selected
-path explicitly in each generated plist and does not inherit terminal state.
+The macOS app reads the default private path. Manual CLI invocations can select
+another profile with the global `--config` option.
 
-### Automation
+### Manual operation
 
-Install automation only after `config validate` and `preflight` pass:
+Photo Steward does not install or restore background schedules. Generate a plan
+from the App, or run the same guarded path manually:
 
 ```bash
-./scripts/install_launchd_agents.sh
+photo-steward preflight
+photo-steward plan-job
 ```
 
-The Mac installs one weekly orchestrator at Sunday 03:15. It creates a photo
-plan and, when configured, a ToDo plan; it never applies either plan. Until a
-verified Synology handoff exists, a second Sunday 04:00 fallback serializes the
-NAS-to-OneDrive backup and a quarantine-retention audit. Retention is dry-run
-by default. Logs belong in `~/Library/Logs/Photo Steward/`; generated
-LaunchAgents contain a config path but no credentials.
-
-Synology deployment is intentionally guarded. The NAS worker can be installed
-and dry-run over SSH, but the Mac fallback is disabled only after a local
-handoff receipt confirms that DSM Task Scheduler is installed and Cloud Sync
-is upload-only without deleting cloud objects when the NAS source disappears.
-See [`docs/automation.md`](./docs/automation.md).
+Review the complete plan and explicitly apply its exact directory. The NAS
+worker, OneDrive backup, and quarantine-retention audit also remain manual
+entry points. See [`docs/automation.md`](./docs/automation.md).
 
 ## Architecture
 
@@ -189,12 +182,12 @@ See [`docs/automation.md`](./docs/automation.md).
 - **Codex Skill:** health inspection, plan explanation, and approval workflow.
 - **macOS console:** status, progress, pending-plan review, and confirmation.
 
-`launchd` invokes wrappers that call the same CLI instead of routing through
-the app. See [`docs/architecture.md`](./docs/architecture.md).
+Manual wrappers and the App call the same CLI. See
+[`docs/architecture.md`](./docs/architecture.md).
 
 ## Release Readiness
 
-Version `0.4.0` is the integrated-installer release candidate. Its universal
+Version `0.4.1` is the manual-operation integrated-installer release candidate. Its universal
 App contains the runtime required by the CLI, the prebuilt Photos bridge, the
 Codex Skill, and the first-run setup flow. A public download is published only
 after the App is notarized and accepted by Gatekeeper. The source checkout

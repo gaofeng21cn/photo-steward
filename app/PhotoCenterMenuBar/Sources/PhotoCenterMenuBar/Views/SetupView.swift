@@ -7,7 +7,6 @@ struct SetupView: View {
 
     @State private var photosLibrary: URL?
     @State private var nasPhotos: URL?
-    @State private var installAgents = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -40,8 +39,10 @@ struct SetupView: View {
                 )
             }
 
-            Toggle("安装后台计划任务", isOn: $installAgents)
-                .toggleStyle(.checkbox)
+            Text("Photo Steward 只在你打开 App 并手动操作时生成或执行计划，不安装后台计划任务。")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
             if case .failed = controller.state {
                 Label(controller.stateMessage, systemImage: "exclamationmark.triangle.fill")
@@ -59,8 +60,7 @@ struct SetupView: View {
                 Button("完成安装并开始使用", systemImage: "checkmark.circle.fill") {
                     controller.completeSetup(
                         photosLibrary: photosLibrary!,
-                        nasPhotos: nasPhotos!,
-                        installAgents: installAgents
+                        nasPhotos: nasPhotos!
                     )
                 }
                 .buttonStyle(.borderedProminent)

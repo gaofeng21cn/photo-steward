@@ -1,7 +1,8 @@
 # Release
 
 This document separates a public source release from a notarized macOS App
-release. Photo Steward `v0.4.0` is the integrated-installer App release.
+release. Photo Steward `v0.4.0` is the last documented integrated-installer
+App release; `v0.4.1` is the manual-operation source and local-install candidate.
 
 ## Local Validation
 
@@ -34,9 +35,9 @@ distribution artifact.
 
 ## Published App
 
-The public App release should be read back from the `v0.4.0` GitHub release after
-notarization. The validation artifact is not a public distribution until the
-ticket is stapled and Gatekeeper accepts it.
+Any public App release must be read back from its exact GitHub tag after
+notarization. The `v0.4.1` validation artifact is not a public distribution
+until the ticket is stapled and Gatekeeper accepts it.
 
 ## Notarization
 

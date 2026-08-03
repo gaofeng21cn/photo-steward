@@ -6,7 +6,6 @@ struct ConfigurationView: View {
 
     @State private var photosLibrary: URL?
     @State private var nasPhotos: URL?
-    @State private var installAgents = true
 
     var body: some View {
         Form {
@@ -39,8 +38,9 @@ struct ConfigurationView: View {
                     chooseNASDirectory()
                 }
 
-                Toggle("同步后台计划任务", isOn: $installAgents)
-                    .toggleStyle(.checkbox)
+                Text("运行模式：手动。需要检查差异时生成计划，审阅精确计划后再确认执行。")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
 
                 Button("保存并重新校验", systemImage: "checkmark.shield") {
                     saveConfiguration()
@@ -101,8 +101,7 @@ struct ConfigurationView: View {
         guard let photosLibrary, let nasPhotos else { return }
         controller.reconfigure(
             photosLibrary: photosLibrary,
-            nasPhotos: nasPhotos,
-            installAgents: installAgents
+            nasPhotos: nasPhotos
         )
     }
 

@@ -9,8 +9,8 @@ split makes responsibility clear; it does not duplicate synchronization logic.
 | CLI | Config parsing, manifests, identity matching, plans, guards, apply, receipts, status | Conversational interpretation or GUI state |
 | Codex Skill | Health explanation, plan review, explicit approval workflow | File copying, matching rules, safety bypasses |
 | macOS console | Status, progress, plan review, confirmation | Direct filesystem mutation or a second sync engine |
-| Mac orchestrator | Weekly Photos-dependent planning and business-status aggregation | Apply or permanent deletion |
-| NAS worker | Serialized NAS backup and retention audit | Source authority or Photos.framework work |
+| Manual wrappers | Owner-triggered plan, backup, and audit entry points | Scheduling or approval inference |
+| NAS worker | Owner-triggered NAS backup and retention audit | Source authority, scheduling, or Photos.framework work |
 
 All interfaces call `photo-steward`. The legacy `icloud-photo-sync` command is
 an equivalent compatibility alias. Its private configuration is the only
@@ -40,22 +40,16 @@ export to the correct path plus a guarded quarantine move from the old path.
    the proposed mirror and quarantine changes.
 5. A receipt and target-side readback record success or failure.
 
-The plan/apply distinction is deliberate. Weekly discovery can be scheduled;
-the mutation decision remains explicit.
+The plan/apply distinction is deliberate. Discovery and mutation are both
+owner-triggered, and applying still requires the exact reviewed plan.
 
-## Scheduling boundary
+## Manual operation boundary
 
-The Mac owns work that requires the local Photos library and Photos.framework.
-`com.photosteward.weekly` runs the photo plan and optional ToDo plan in order,
-continues after a child-process failure, and writes one scheduler receipt that
-separates process exit from business state such as `review_ready` or `blocked`.
-
-NAS maintenance is a separate serial flow: off-site backup runs first, then
-quarantine retention is audited. The NAS worker never uses `rsync --delete` and
-retention remains audit-only unless `--apply-retention` is explicitly supplied.
-The Mac keeps the same safe fallback until a verified handoff receipt proves
-that DSM Task Scheduler and the required Cloud Sync deletion semantics are in
-force. A deployed worker or dry-run receipt alone is not a handoff.
+The Mac owns work that requires the local Photos library and Photos.framework,
+but it does not schedule that work. The user opens the App or invokes the CLI
+when a new plan is needed. NAS maintenance remains a separate manual flow. The
+NAS worker never uses `rsync --delete`, and retention remains audit-only unless
+`--apply-retention` is explicitly supplied after review.
 
 ## Configuration and distribution boundary
 
@@ -67,14 +61,14 @@ stay outside Git. See [`configuration.md`](./configuration.md).
 The integrated installer is the normal distribution path: a versioned,
 notarized App carries the runtime, CLI, Photos bridge, and Codex Skill, then
 installs them into user-owned locations on first launch. Checkout-linked
-installers remain available only for development and testing. Current
-`com.photosteward.*` LaunchAgent labels are compatibility identifiers, not the
-future product namespace.
+installers remain available only for development and testing. On startup, the
+App removes legacy `com.photosteward.*` schedules from older versions and does
+not recreate them.
 
 ## Non-goals
 
 - Reverse sync from NAS to iCloud Photos.
-- Automatic apply from a scheduled job.
+- Background planning, backup, retention, or apply jobs.
 - Permanent deletion during ordinary plan apply.
 - Visual similarity, file names, or filesystem times as photo identity.
 - Passwords, cloud tokens, or certificates in Git or `config.toml`.

@@ -139,6 +139,13 @@ final class PhotoStewardRuntimeController: ObservableObject {
         do {
             let root = try installer.install()
             runtimeRoot = root
+            try Self.requireSuccess(
+                try Self.runProcess(
+                    executable: root.appendingPathComponent("scripts/retire_launchd_agents.sh"),
+                    arguments: []
+                ),
+                action: "停用旧后台计划任务"
+            )
             let configPathResult = try run(
                 executable: root.appendingPathComponent("scripts/icloud-photo-sync"),
                 arguments: ["config", "path"]
@@ -155,13 +162,6 @@ final class PhotoStewardRuntimeController: ObservableObject {
                         from: Data(result.output.utf8)
                     )
                     self.configSummary = configSummary
-                    if !agentsUseRuntime(root, configSummary: configSummary) {
-                        let agentsResult = try run(
-                            executable: root.appendingPathComponent("scripts/install_launchd_agents.sh"),
-                            arguments: Self.agentInstallArguments(for: configSummary)
-                        )
-                        try Self.requireSuccess(agentsResult, action: "更新后台同步任务")
-                    }
                     state = .ready
                 } else {
                     state = .needsSetup("已有配置，但校验未通过。请重新选择照片图库和 NAS 照片目录。")
@@ -174,23 +174,15 @@ final class PhotoStewardRuntimeController: ObservableObject {
         }
     }
 
-    func completeSetup(photosLibrary: URL, nasPhotos: URL, installAgents: Bool) {
-        configure(
-            photosLibrary: photosLibrary,
-            nasPhotos: nasPhotos,
-            installAgents: installAgents
-        )
+    func completeSetup(photosLibrary: URL, nasPhotos: URL) {
+        configure(photosLibrary: photosLibrary, nasPhotos: nasPhotos)
     }
 
-    func reconfigure(photosLibrary: URL, nasPhotos: URL, installAgents: Bool) {
-        configure(
-            photosLibrary: photosLibrary,
-            nasPhotos: nasPhotos,
-            installAgents: installAgents
-        )
+    func reconfigure(photosLibrary: URL, nasPhotos: URL) {
+        configure(photosLibrary: photosLibrary, nasPhotos: nasPhotos)
     }
 
-    private func configure(photosLibrary: URL, nasPhotos: URL, installAgents: Bool) {
+    private func configure(photosLibrary: URL, nasPhotos: URL) {
         guard let runtimeRoot else {
             state = .failed("内置运行环境尚未准备好。")
             return
@@ -206,8 +198,7 @@ final class PhotoStewardRuntimeController: ObservableObject {
                 self?.runSetup(
                     runtimeRoot: runtimeRoot,
                     photosLibrary: photosLibrary,
-                    nasPhotos: nasPhotos,
-                    installAgents: installAgents
+                    nasPhotos: nasPhotos
                 )
             }
         }
@@ -216,8 +207,7 @@ final class PhotoStewardRuntimeController: ObservableObject {
     private func runSetup(
         runtimeRoot: URL,
         photosLibrary: URL,
-        nasPhotos: URL,
-        installAgents: Bool
+        nasPhotos: URL
     ) {
         state = .working("正在检查 NAS 并写入私有配置...")
         Task.detached {
@@ -251,16 +241,6 @@ final class PhotoStewardRuntimeController: ObservableObject {
                     try Self.runProcess(executable: cli, arguments: ["preflight"]),
                     action: "执行 NAS 预检"
                 )
-                if installAgents {
-                    let agents = runtimeRoot.appendingPathComponent("scripts/install_launchd_agents.sh")
-                    try Self.requireSuccess(
-                        try Self.runProcess(
-                            executable: agents,
-                            arguments: Self.agentInstallArguments(for: summary)
-                        ),
-                        action: "安装后台同步任务"
-                    )
-                }
                 await MainActor.run {
                     self.configSummary = summary
                     self.state = .ready
@@ -275,89 +255,6 @@ final class PhotoStewardRuntimeController: ObservableObject {
 
     private func run(executable: URL, arguments: [String]) throws -> ProcessResult {
         try Self.runProcess(executable: executable, arguments: arguments)
-    }
-
-    nonisolated private static func agentInstallArguments(for configSummary: RuntimeConfigSummary) -> [String] {
-        var arguments: [String] = []
-        if !configSummary.backupConfigured {
-            arguments.append("--photo-only")
-        }
-        if configSummary.todoExtensionConfigured {
-            arguments.append("--include-todo")
-        }
-        if nasJobsAreExternal {
-            arguments.append("--nas-jobs-external")
-        }
-        return arguments
-    }
-
-    nonisolated private static var nasJobsAreExternal: Bool {
-        let receiptURL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/Photo Steward/nas-jobs-external")
-        guard let data = try? Data(contentsOf: receiptURL),
-              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              payload["schema_version"] as? Int == 1,
-              payload["status"] as? String == "verified",
-              payload["scheduler"] as? String == "synology_dsm_task_scheduler",
-              payload["scheduler_status"] as? String == "installed",
-              let cloudSync = payload["cloud_sync"] as? [String: Any],
-              cloudSync["direction"] as? String == "upload_only",
-              cloudSync["delete_destination_on_source_delete"] as? Bool == false
-        else {
-            return false
-        }
-        return true
-    }
-
-    private func agentsUseRuntime(_ runtimeRoot: URL, configSummary: RuntimeConfigSummary) -> Bool {
-        let launchAgents = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/LaunchAgents", isDirectory: true)
-        let nasJobsExternal = Self.nasJobsAreExternal
-        let contracts: [(String, String, Bool, Int, Int)] = [
-            ("com.photosteward.weekly", "run_weekly_orchestrator.sh", true, 3, 15),
-            ("com.photosteward.nas-maintenance.weekly", "run_nas_maintenance.sh", !nasJobsExternal, 4, 0),
-            ("com.photosteward.plan.daily", "run_plan.sh", false, 0, 0),
-            ("com.photosteward.todo.daily", "run_todo_plan.sh", false, 0, 0),
-            ("com.photosteward.deleted-pool.daily", "run_deleted_pool_retention.sh", false, 0, 0),
-            ("com.photosteward.onedrive.daily", "run_onedrive_backup.sh", false, 0, 0),
-        ]
-        for (label, scriptName, enabled, expectedHour, expectedMinute) in contracts {
-            let plist = launchAgents.appendingPathComponent("\(label).plist")
-            if !enabled {
-                if FileManager.default.fileExists(atPath: plist.path) {
-                    return false
-                }
-                continue
-            }
-            let executable = runtimeRoot.appendingPathComponent("scripts/\(scriptName)").path
-            guard let data = try? Data(contentsOf: plist),
-                  let payload = try? PropertyListSerialization.propertyList(from: data, format: nil),
-                  let dictionary = payload as? [String: Any],
-                  let arguments = dictionary["ProgramArguments"] as? [String],
-                  arguments.first == executable,
-                  let environment = dictionary["EnvironmentVariables"] as? [String: String],
-                  environment["PHOTO_STEWARD_CONFIG"] == configSummary.configPath,
-                  let schedule = dictionary["StartCalendarInterval"] as? [String: Int],
-                  schedule["Weekday"] == 0,
-                  schedule["Hour"] == expectedHour,
-                  schedule["Minute"] == expectedMinute
-            else {
-                return false
-            }
-            if label == "com.photosteward.weekly" {
-                let includesTodo = environment["PHOTO_STEWARD_INCLUDE_TODO"] == "true"
-                if includesTodo != configSummary.todoExtensionConfigured {
-                    return false
-                }
-            }
-            if label == "com.photosteward.nas-maintenance.weekly" {
-                let includesOneDrive = environment["PHOTO_STEWARD_INCLUDE_ONEDRIVE"] == "true"
-                if includesOneDrive != configSummary.backupConfigured {
-                    return false
-                }
-            }
-        }
-        return true
     }
 
     nonisolated private static func requireSuccess(_ result: ProcessResult, action: String) throws {

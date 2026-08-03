@@ -1,8 +1,8 @@
 # Configuration
 
 Photo Steward keeps every machine-specific path in one private TOML file. The
-CLI owns schema parsing; the Codex Skill, macOS console, wrappers, and
-`launchd` all call the CLI rather than interpreting paths independently.
+CLI owns schema parsing; the Codex Skill, macOS console, and manual wrappers
+all call the CLI rather than interpreting paths independently.
 
 ## Location and precedence
 
@@ -52,9 +52,8 @@ photo-steward --config /absolute/path/config.toml preflight
 ```
 
 `config activate` writes the selected path to the private pointer. The macOS
-console resolves that pointer, while `launchd` records the same selected path
-in each generated plist. This prevents a custom CLI profile, the App, and
-scheduled work from targeting different libraries or NAS mounts.
+console and manual wrappers resolve that pointer. This prevents a custom CLI
+profile and the App from targeting different libraries or NAS mounts.
 
 ## Schema
 
@@ -112,16 +111,15 @@ credentials.
 The schema accepts only the fields documented above and rejects unknown keys,
 including common credential variants such as `nas_password`, `access_token`, or
 `client_secret`. Keep NAS credentials in the mount/keychain layer and backup
-credentials in the adapter's own store. Generated LaunchAgent files contain the
-configuration path only, never credentials or config content.
+credentials in the adapter's own store. Photo Steward does not generate
+LaunchAgent files.
 
 For an existing deployment, keep the current runtime paths in the first private
 configuration so historical dashboard status and receipts remain visible. Move
 state into the documented `runtime.state_dir` only as a separate,
-non-destructive migration. Reinstall local links and automation after the new
-configuration validates:
+non-destructive migration. Reinstall local links after the new configuration
+validates:
 
 ```bash
 ./scripts/install_local.sh
-./scripts/install_launchd_agents.sh
 ```

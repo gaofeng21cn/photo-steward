@@ -15,8 +15,10 @@ RUNTIME_DIR="$ROOT_DIR/tmp/test-runtime-bundle"
 [[ -f "$RUNTIME_DIR/.runtime-manifest" ]]
 [[ -f "$RUNTIME_DIR/skills/photo-steward/SKILL.md" ]]
 [[ -f "$RUNTIME_DIR/skills/icloud-photo-center/SKILL.md" ]]
-[[ -x "$RUNTIME_DIR/scripts/run_weekly_orchestrator.sh" ]]
-[[ -x "$RUNTIME_DIR/scripts/run_nas_maintenance.sh" ]]
+[[ -x "$RUNTIME_DIR/scripts/retire_launchd_agents.sh" ]]
+[[ ! -e "$RUNTIME_DIR/scripts/install_launchd_agents.sh" ]]
+[[ ! -e "$RUNTIME_DIR/scripts/run_weekly_orchestrator.sh" ]]
+[[ ! -e "$RUNTIME_DIR/scripts/run_nas_maintenance.sh" ]]
 [[ -x "$RUNTIME_DIR/scripts/nas/photo_steward_nas_worker.py" ]]
 [[ -x "$RUNTIME_DIR/scripts/nas/install_synology_worker.sh" ]]
 
@@ -27,4 +29,4 @@ PYTHONPATH="$RUNTIME_DIR/vendor:$RUNTIME_DIR" \
   "$RUNTIME_DIR/bin/python3" -m tools.icloud_photo_sync.cli --help >/dev/null
 [[ -z "$(find "$RUNTIME_DIR/tools" "$RUNTIME_DIR/vendor" -name '__pycache__' -print -quit)" ]]
 
-print "runtime_bundle: bundled Python, bridge, CLI, and Skill are executable"
+print "runtime_bundle: manual runtime, bridge, CLI, Skill, and legacy scheduler retirement are executable"

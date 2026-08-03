@@ -18,7 +18,7 @@ Photo Steward 用来协调本机 macOS Photos 图库、iCloud Photos 与 NAS 镜
 ### 它解决什么问题
 
 - **iCloud Photos 始终是唯一权威来源。** NAS 和异地备份只是镜像或备份，不会反过来判定图库里什么才是最新版本。
-- **任何变更先有计划。** 定时任务可以发现差异，但不能自行执行照片镜像或删除动作。
+- **任何变更先有计划。** 只有用户手动要求时才生成计划，后台不会自动扫描或执行照片镜像。
 - **只存在于镜像端的文件进入待删池。** 系统将它们移入带日期、可复核的隔离位置，而不是直接永久删除。
 - **必须有成功回执。** 只有精确计划通过安全校验并完成目标端回读后，状态才会更新为成功。
 
@@ -30,7 +30,7 @@ Photo Steward 用来协调本机 macOS Photos 图库、iCloud Photos 与 NAS 镜
 4. 只有当计划完全符合预期时，才确认执行这一个精确计划。
 5. 执行后读取回执和状态总览。
 
-菜单栏 App 是控制台，不是第二套同步逻辑。它、Codex Skill 和 `launchd` 调用的都是同一个确定性 CLI。
+菜单栏 App 是控制台，不是第二套同步逻辑。它和 Codex Skill 调用的都是同一个确定性 CLI。
 
 ### 隐私与数据
 
@@ -57,11 +57,11 @@ Photo Steward 用来协调本机 macOS Photos 图库、iCloud Photos 与 NAS 镜
 首次启动时，App 会先自动查找 `~/Pictures` 下的 Photos 图库；如果本机有多个图库，
 可以点击“更改”。你只需选择已经挂载的 NAS 照片镜像目录。完成初始化后，仍可在
 控制台左侧的“设置”中查看实际生效的配置文件、挂载点和照片目录，或重新选择 NAS 目录；
-App 会再次校验挂载并更新后台任务。
+App 会再次校验挂载并更新私有配置。
 
 随后 App 会自动安装内置运行环境、`~/.local/bin` 下的 CLI、`~/.codex/skills`
-下的 `photo-steward` Skill，生成并校验私有配置，请求 Photos 访问权限，并安装
-每周 Mac 调度器和受控的 NAS 维护回退任务。如果已有配置损坏，重新完成向导会安全地重建这份
+下的 `photo-steward` Skill，生成并校验私有配置，并请求 Photos 访问权限。它不会安装
+Mac 或 NAS 定时任务；如果已有配置损坏，重新完成向导会安全地重建这份
 私有配置。不需要安装 Python、Swift，不需要 clone 仓库，也不需要手工编辑 TOML。
 
 仓库中的安装脚本只面向开发和测试：
@@ -119,25 +119,24 @@ photo-steward apply-job --plan-dir <精确计划目录>
 App 安装的是本地 Skill，不会静默安装远程 Codex 插件，不会替用户授予 Codex
 权限，也不会上传照片。安装完成后，新建 Codex 任务即可发现该 Skill。
 
-配置优先级依次为：操作命令中的显式参数、全局 `--config`、`PHOTO_STEWARD_CONFIG`、兼容变量 `ICLOUD_PHOTO_SYNC_CONFIG`、私有活动配置指针、默认私有路径。`config activate` 会更新该私有指针，使 macOS App 与 LaunchAgent 始终使用同一份配置。全局参数必须写在子命令之前：
+配置优先级依次为：操作命令中的显式参数、全局 `--config`、`PHOTO_STEWARD_CONFIG`、兼容变量 `ICLOUD_PHOTO_SYNC_CONFIG`、私有活动配置指针、默认私有路径。`config activate` 会更新该私有指针，使 macOS App 与手动 CLI 始终使用同一份配置。全局参数必须写在子命令之前：
 
 ```bash
 photo-steward --config /绝对路径/config.toml preflight
 ```
 
-macOS App 读取默认私有路径。`launchd` 会把选择的配置路径明确写入每个 plist，不依赖终端会话环境。
+macOS App 读取默认私有路径，手动 CLI 可以用全局 `--config` 明确选择其他配置。
 
-### 自动化
+### 手动运行
 
-只有在 `config validate` 与 `preflight` 都通过后，才安装自动化：
+Photo Steward 不安装或恢复后台计划任务。需要检查差异时，在 App 中点击“生成新计划”，或手动运行：
 
 ```bash
-./scripts/install_launchd_agents.sh
+photo-steward preflight
+photo-steward plan-job
 ```
 
-Mac 每周日 `03:15` 运行一个统一调度器，生成照片计划；配置了 ToDo 扩展时，照片计划无论成功与否都会继续生成 ToDo 计划。它**不会**自动执行任何计划。DSM 尚未形成权威接管回执时，Mac 还会在 `04:00` 串行执行 NAS 到 OneDrive 的备份和待删池保留期审计；保留期处理默认仅预演，不会删除文件。日志位于 `~/Library/Logs/Photo Steward/`。
-
-NAS 分工采用渐进迁移。可以先通过 SSH 安装 NAS worker 并执行 dry-run，但只有同时确认 DSM Task Scheduler 已安装、Cloud Sync 为仅上传、且 NAS 源删除不会删除 OneDrive 目的端后，App 才会停用 Mac 回退任务。详细操作和接管回执格式见 [`docs/automation.md`](./docs/automation.md)。
+计划必须在 App 或 Codex 中完整审阅后，针对精确计划目录手动确认执行。NAS worker、OneDrive 备份和待删池审计也只保留手动入口。详细操作见 [`docs/automation.md`](./docs/automation.md)。
 
 ## 架构
 
@@ -145,11 +144,11 @@ NAS 分工采用渐进迁移。可以先通过 SSH 安装 NAS worker 并执行 d
 - **Codex Skill：** 负责检查状态、解释计划和组织审批。
 - **macOS 控制台：** 显示健康状态、进度、待审计划并获取确认。
 
-`launchd` 调用 wrapper，再调用同一个 CLI，不会经过 App。详细边界见 [`docs/architecture.md`](./docs/architecture.md)。
+手动 wrapper 和 App 都调用同一个 CLI。详细边界见 [`docs/architecture.md`](./docs/architecture.md)。
 
 ## 发布准备度
 
-`v0.4.0` 是一体化安装版本候选。通用架构 App 已经内置 CLI 所需运行环境、
+`v0.4.1` 是手动运行模式的一体化安装版本候选。通用架构 App 已经内置 CLI 所需运行环境、
 预编译 Photos bridge、Codex Skill 和首次启动配置流程。正式公开下载还必须完成
 Apple 公证并通过 Gatekeeper 验证。普通用户只需要安装正式 App；源码仓库和
 checkout 软链接安装器保留给贡献者。
