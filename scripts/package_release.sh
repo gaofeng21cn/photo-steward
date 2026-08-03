@@ -84,6 +84,7 @@ done
 
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
 /usr/bin/lipo "${binaries[@]}" -create -output "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"
+/usr/bin/strip -S "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"
 /bin/cp "$INFO_PLIST" "$APP_DIR/Contents/Info.plist"
 /bin/cp "$ICON_FILE" "$APP_DIR/Contents/Resources/PhotoSteward.icns"
 /usr/bin/ditto "$RUNTIME_DIR" "$APP_DIR/Contents/Resources/PhotoStewardRuntime"

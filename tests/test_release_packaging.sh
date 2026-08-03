@@ -18,6 +18,7 @@ plutil -extract CFBundleIconFile raw -o - \
 rg -Fq -- '--notarize' "$PACKAGE_SCRIPT"
 rg -Fq -- 'Developer ID Application' "$PACKAGE_SCRIPT"
 rg -Fq -- 'lipo' "$PACKAGE_SCRIPT"
+rg -Fq -- '/usr/bin/strip -S "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"' "$PACKAGE_SCRIPT"
 rg -Fq -- 'xcrun notarytool submit' "$PACKAGE_SCRIPT"
 rg -Fq -- 'PhotoStewardRuntime' "$PACKAGE_SCRIPT"
 rg -Fq -- 'Python3.framework' "$ROOT_DIR/scripts/stage_runtime.sh"
@@ -31,5 +32,10 @@ rg -Fq -- '"$SIGNING_IDENTITY" != "-"' "$ROOT_DIR/scripts/sign_runtime.sh"
 [[ "$(rg -Fc -- 'scripts/sign_runtime.sh' "$ROOT_DIR/scripts/install_menu_bar_app.sh")" == "2" ]]
 ! rg -Fq -- '--deep' "$ROOT_DIR/scripts/install_menu_bar_app.sh"
 rg -Fq -- 'fresh clone validation passed' "$FRESH_CLONE_SCRIPT"
+
+lipo_line="$(rg -n -F '/usr/bin/lipo "${binaries[@]}" -create' "$PACKAGE_SCRIPT" | cut -d: -f1)"
+strip_line="$(rg -n -F '/usr/bin/strip -S "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"' "$PACKAGE_SCRIPT" | cut -d: -f1)"
+codesign_line="$(rg -n -F '/usr/bin/codesign \' "$PACKAGE_SCRIPT" | cut -d: -f1)"
+(( lipo_line < strip_line && strip_line < codesign_line ))
 
 print "release_packaging: icon and distribution gates present"
