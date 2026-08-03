@@ -18,6 +18,9 @@ plutil -lint "$APP_DIR/PhotoSteward.entitlements" >/dev/null
 rg -Fq 'MenuBarExtra' "$SOURCE_DIR"
 rg -Fq 'Window("Photo Steward", id: ControlCenterView.windowID)' "$SOURCE_DIR/main.swift"
 ! rg -Fq 'WindowGroup("Photo Steward"' "$SOURCE_DIR/main.swift"
+rg -Fq 'MenuBarStatusIcon(health: store.health)' "$SOURCE_DIR/main.swift"
+rg -Fq 'Image(systemName: "photo.on.rectangle.angled")' "$SOURCE_DIR/main.swift"
+! rg -Fq 'Image(systemName: store.statusSymbol)' "$SOURCE_DIR/main.swift"
 rg -Fq 'NavigationSplitView' "$SOURCE_DIR"
 [[ -n "$(find "$SOURCE_DIR" -type f \( -iname '*control*.swift' -o -iname '*console*.swift' \) -print -quit)" ]]
 [[ -n "$(find "$SOURCE_DIR" -type f -iname '*plan*.swift' -print -quit)" ]]

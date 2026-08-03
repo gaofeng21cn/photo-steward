@@ -1,5 +1,42 @@
 import SwiftUI
 
+private struct MenuBarStatusIcon: View {
+    let health: PhotoCenterHealth
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Image(systemName: "photo.on.rectangle.angled")
+                .font(.system(size: 14, weight: .medium))
+
+            if let badgeSymbol {
+                Image(systemName: badgeSymbol)
+                    .font(.system(size: badgeSize, weight: .bold))
+                    .offset(x: 3, y: -2)
+            }
+        }
+        .symbolRenderingMode(.monochrome)
+        .frame(width: 20, height: 16)
+        .accessibilityElement(children: .ignore)
+    }
+
+    private var badgeSymbol: String? {
+        switch health {
+        case .healthy:
+            return nil
+        case .attention:
+            return "circle.fill"
+        case .error:
+            return "exclamationmark.circle.fill"
+        case .unknown:
+            return "circle"
+        }
+    }
+
+    private var badgeSize: CGFloat {
+        health == .error ? 7 : 5
+    }
+}
+
 struct PhotoCenterApp: App {
     @StateObject private var store = PhotoCenterStore(autoRefresh: false)
     @StateObject private var runtime = PhotoStewardRuntimeController()
@@ -34,8 +71,7 @@ struct PhotoCenterApp: App {
                 }
             }
         } label: {
-            Image(systemName: store.statusSymbol)
-                .foregroundStyle(store.statusColor)
+            MenuBarStatusIcon(health: store.health)
                 .accessibilityLabel("Photo Steward：\(store.health.displayName)")
         }
         .menuBarExtraStyle(.window)
