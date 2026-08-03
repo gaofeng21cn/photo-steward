@@ -185,13 +185,14 @@ entry points. See [`docs/automation.md`](./docs/automation.md).
 Manual wrappers and the App call the same CLI. See
 [`docs/architecture.md`](./docs/architecture.md).
 
-## Release Readiness
+## Current Release
 
-Version `0.4.1` is the manual-operation integrated-installer release candidate. Its universal
-App contains the runtime required by the CLI, the prebuilt Photos bridge, the
-Codex Skill, and the first-run setup flow. A public download is published only
-after the App is notarized and accepted by Gatekeeper. The source checkout
-remains useful for contributors, but a normal user should install only the App.
+Version `0.4.2` is the current integrated macOS release. Its universal App
+contains the CLI runtime, prebuilt Photos bridge, Codex Skill, first-run setup,
+in-app NAS configuration, and reviewable photo plans. The public archive is
+signed with Apple Developer ID, notarized, stapled, and accepted by Gatekeeper.
+The source checkout remains useful for contributors, but a normal user should
+install only the App from the latest release page.
 
 iCloud and Photos describe the supported Apple integration; Photo Steward is
 independent software and is not affiliated with Apple. The Apache-2.0 license

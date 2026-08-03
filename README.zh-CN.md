@@ -146,12 +146,13 @@ photo-steward plan-job
 
 手动 wrapper 和 App 都调用同一个 CLI。详细边界见 [`docs/architecture.md`](./docs/architecture.md)。
 
-## 发布准备度
+## 当前版本
 
-`v0.4.1` 是手动运行模式的一体化安装版本候选。通用架构 App 已经内置 CLI 所需运行环境、
-预编译 Photos bridge、Codex Skill 和首次启动配置流程。正式公开下载还必须完成
-Apple 公证并通过 Gatekeeper 验证。普通用户只需要安装正式 App；源码仓库和
-checkout 软链接安装器保留给贡献者。
+`v0.4.2` 是当前正式发布的一体化 macOS 版本。通用架构 App 已内置 CLI 运行环境、
+预编译 Photos bridge、Codex Skill、首次启动向导、App 内 NAS 配置和可逐项查看的
+照片计划。公开下载包已使用 Apple Developer ID 签名，完成 Apple 公证并附加票据，
+可通过 Gatekeeper 验证。普通用户只需要从最新发布页安装 App；源码仓库和 checkout
+软链接安装器保留给贡献者。
 
 文档中出现 iCloud 和 Photos 只是为了说明支持的 Apple 平台能力；Photo Steward
 是独立软件，与 Apple 无隶属关系。Apache-2.0 许可证不授予使用 Apple、iCloud
