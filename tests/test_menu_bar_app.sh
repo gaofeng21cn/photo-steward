@@ -14,7 +14,8 @@ plutil -lint "$APP_DIR/Info.plist" >/dev/null
 
 # The menu bar remains a fast entry point; the auditable workflow lives in a window.
 rg -Fq 'MenuBarExtra' "$SOURCE_DIR"
-rg -Fq 'WindowGroup' "$SOURCE_DIR"
+rg -Fq 'Window("Photo Steward", id: ControlCenterView.windowID)' "$SOURCE_DIR/main.swift"
+! rg -Fq 'WindowGroup("Photo Steward"' "$SOURCE_DIR/main.swift"
 rg -Fq 'NavigationSplitView' "$SOURCE_DIR"
 [[ -n "$(find "$SOURCE_DIR" -type f \( -iname '*control*.swift' -o -iname '*console*.swift' \) -print -quit)" ]]
 [[ -n "$(find "$SOURCE_DIR" -type f -iname '*plan*.swift' -print -quit)" ]]
@@ -40,6 +41,11 @@ rg -Fq '"--force"' "$SOURCE_DIR/Services/PhotoStewardRuntime.swift"
 rg -Fq 'PhotoPreviewLoader' "$SOURCE_DIR/Views/PlanReviewView.swift"
 rg -Fq 'CGImageSourceCreateThumbnailAtIndex' "$SOURCE_DIR/Views/PlanReviewView.swift"
 rg -Fq 'PHImageResultIsDegradedKey' "$SOURCE_DIR/Views/PlanReviewView.swift"
+rg -Fq 'PHPhotoLibrary.authorizationStatus(for: .readWrite)' "$SOURCE_DIR/Views/PlanReviewView.swift"
+rg -Fq 'PhotosAuthorizationCoordinator' "$SOURCE_DIR/Views/PlanReviewView.swift"
+rg -Fq 'PHImageManager.default().cancelImageRequest' "$SOURCE_DIR/Views/PlanReviewView.swift"
+rg -Fq '预览读取超时' "$SOURCE_DIR/Views/PlanReviewView.swift"
+! rg -Fq 'if self.requestedMaxPixelSize > self.loadedMaxPixelSize' "$SOURCE_DIR/Views/PlanReviewView.swift"
 rg -Fq '在 Finder 中查看' "$SOURCE_DIR/Views/PlanReviewView.swift"
 rg -Fq '未找到 NAS 挂载点' "$SOURCE_DIR/Services/PhotoCenterStore.swift"
 rg -Fq 'nas mount unavailable' "$SOURCE_DIR/Services/PhotoCenterStore.swift"

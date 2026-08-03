@@ -441,6 +441,9 @@ private final class PhotoPreviewLoader: ObservableObject {
     private let item: PhotoCenterPlanItem
     private var loadedMaxPixelSize = 0
     private var requestedMaxPixelSize = 0
+    private var requestGeneration = 0
+    private var imageRequestID = PHInvalidImageRequestID
+    private var timeoutWorkItem: DispatchWorkItem?
 
     init(item: PhotoCenterPlanItem) {
         self.item = item
@@ -449,80 +452,258 @@ private final class PhotoPreviewLoader: ObservableObject {
     func load(targetSize: CGSize) {
         let maxPixelSize = max(1, Int(max(targetSize.width, targetSize.height)))
         requestedMaxPixelSize = max(requestedMaxPixelSize, maxPixelSize)
-        guard !isLoading, image == nil || maxPixelSize > loadedMaxPixelSize else { return }
+        guard errorMessage == nil,
+              !isLoading,
+              image == nil || maxPixelSize > loadedMaxPixelSize
+        else {
+            return
+        }
 
+        cancelOutstandingRequest()
+        requestGeneration += 1
+        let generation = requestGeneration
         isLoading = true
         errorMessage = nil
         let requestSize = requestedMaxPixelSize
 
         if let sourcePath = item.sourcePath {
+            scheduleTimeout(
+                generation: generation,
+                loadedSize: requestSize,
+                seconds: 20,
+                message: "预览读取超时。请检查文件是否仍可访问后重试。"
+            )
             DispatchQueue.global(qos: .userInitiated).async { [weak self] in
                 let image = Self.imageFromFile(path: sourcePath, maxPixelSize: requestSize)
-                self?.finish(image: image, error: image == nil ? "无法读取文件或解码照片格式。" : nil, loadedSize: requestSize)
+                self?.finish(
+                    generation: generation,
+                    image: image,
+                    error: image == nil ? "无法读取文件或解码照片格式。" : nil,
+                    loadedSize: requestSize
+                )
             }
             return
         }
 
         guard let localIdentifier = item.assetLocalIdentifier else {
-            finish(image: nil, error: "计划没有可用的照片来源。", loadedSize: requestSize)
+            finish(
+                generation: generation,
+                image: nil,
+                error: "计划没有可用的照片来源。",
+                loadedSize: requestSize
+            )
             return
         }
 
+        scheduleTimeout(
+            generation: generation,
+            loadedSize: requestSize,
+            seconds: 60,
+            message: "等待 Photos 授权超时。请确认系统权限提示后重试。"
+        )
+        requestPhotosAccess(
+            localIdentifier: localIdentifier,
+            requestSize: requestSize,
+            generation: generation
+        )
+    }
+
+    func reload(targetSize: CGSize) {
+        cancelOutstandingRequest()
+        requestGeneration += 1
+        image = nil
+        loadedMaxPixelSize = 0
+        requestedMaxPixelSize = 0
+        isLoading = false
+        errorMessage = nil
+        load(targetSize: targetSize)
+    }
+
+    private func requestPhotosAccess(
+        localIdentifier: String,
+        requestSize: Int,
+        generation: Int
+    ) {
+        PhotosAuthorizationCoordinator.request { [weak self] status in
+            guard let self, generation == self.requestGeneration else { return }
+            switch status {
+            case .authorized, .limited:
+                self.requestPhotosImage(
+                    localIdentifier: localIdentifier,
+                    requestSize: requestSize,
+                    generation: generation
+                )
+            case .denied:
+                self.finish(
+                    generation: generation,
+                    image: nil,
+                    error: "Photo Steward 的 Photos 读取权限已关闭。请在系统设置中允许后重试。",
+                    loadedSize: requestSize
+                )
+            case .restricted:
+                self.finish(
+                    generation: generation,
+                    image: nil,
+                    error: "这台 Mac 限制了 Photos 访问，无法读取预览。",
+                    loadedSize: requestSize
+                )
+            case .notDetermined:
+                self.finish(
+                    generation: generation,
+                    image: nil,
+                    error: "Photo Steward 没有 Photos 读取权限。请在系统设置中允许后重试。",
+                    loadedSize: requestSize
+                )
+            @unknown default:
+                self.finish(
+                    generation: generation,
+                    image: nil,
+                    error: "无法确认 Photos 访问权限。",
+                    loadedSize: requestSize
+                )
+            }
+        }
+    }
+
+    private func requestPhotosImage(
+        localIdentifier: String,
+        requestSize: Int,
+        generation: Int
+    ) {
+        guard generation == requestGeneration else { return }
+        scheduleTimeout(
+            generation: generation,
+            loadedSize: requestSize,
+            seconds: 20,
+            message: "预览读取超时。请检查 Photos 权限或网络后重试。"
+        )
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil)
         guard let asset = assets.firstObject else {
-            finish(image: nil, error: "在本机 Photos 中找不到这项资产。", loadedSize: requestSize)
+            finish(
+                generation: generation,
+                image: nil,
+                error: "在本机 Photos 中找不到这项资产。",
+                loadedSize: requestSize
+            )
             return
         }
 
         let options = PHImageRequestOptions()
-        options.deliveryMode = .highQualityFormat
+        options.deliveryMode = .opportunistic
         options.resizeMode = .fast
         options.isNetworkAccessAllowed = true
-        PHImageManager.default().requestImage(
+        imageRequestID = PHImageManager.default().requestImage(
             for: asset,
             targetSize: CGSize(width: requestSize, height: requestSize),
             contentMode: .aspectFit,
             options: options
         ) { [weak self] image, info in
             let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
-            if let image, !isDegraded {
-                self?.finish(image: image, error: nil, loadedSize: requestSize)
+            if let image, isDegraded {
+                self?.publishPreview(image, generation: generation)
+            } else if let image {
+                self?.finish(
+                    generation: generation,
+                    image: image,
+                    error: nil,
+                    loadedSize: requestSize
+                )
             } else if let error = info?[PHImageErrorKey] as? Error {
-                self?.finish(image: nil, error: error.localizedDescription, loadedSize: requestSize)
+                self?.finish(
+                    generation: generation,
+                    image: nil,
+                    error: error.localizedDescription,
+                    loadedSize: requestSize
+                )
             } else if (info?[PHImageCancelledKey] as? Bool) == true {
-                self?.finish(image: nil, error: "预览读取已取消。", loadedSize: requestSize)
+                self?.finish(
+                    generation: generation,
+                    image: nil,
+                    error: "预览读取已取消。",
+                    loadedSize: requestSize
+                )
             } else if !isDegraded && image == nil {
-                self?.finish(image: nil, error: "Photos 没有返回可显示的预览。", loadedSize: requestSize)
+                self?.finish(
+                    generation: generation,
+                    image: nil,
+                    error: "Photos 没有返回可显示的预览。",
+                    loadedSize: requestSize
+                )
             }
         }
     }
 
-    func reload(targetSize: CGSize) {
-        image = nil
-        loadedMaxPixelSize = 0
-        requestedMaxPixelSize = 0
-        errorMessage = nil
-        load(targetSize: targetSize)
+    private func publishPreview(_ image: NSImage, generation: Int) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, generation == self.requestGeneration else { return }
+            self.image = image
+        }
     }
 
-    private func finish(image: NSImage?, error: String?, loadedSize: Int) {
+    private func scheduleTimeout(
+        generation: Int,
+        loadedSize: Int,
+        seconds: TimeInterval,
+        message: String
+    ) {
+        timeoutWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.finish(
+                generation: generation,
+                image: nil,
+                error: message,
+                loadedSize: loadedSize
+            )
+        }
+        timeoutWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: workItem)
+    }
+
+    private func finish(
+        generation: Int,
+        image: NSImage?,
+        error: String?,
+        loadedSize: Int
+    ) {
         DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
+            guard let self, generation == self.requestGeneration else { return }
+            self.timeoutWorkItem?.cancel()
+            self.timeoutWorkItem = nil
+            if self.imageRequestID != PHInvalidImageRequestID {
+                PHImageManager.default().cancelImageRequest(self.imageRequestID)
+                self.imageRequestID = PHInvalidImageRequestID
+            }
             self.isLoading = false
-            if let image {
-                self.image = image
+            let requestedSize = self.requestedMaxPixelSize
+            let shouldLoadLargerImage = image != nil && requestedSize > loadedSize
+            if let resolvedImage = image ?? self.image {
+                self.image = resolvedImage
                 self.loadedMaxPixelSize = loadedSize
                 self.errorMessage = nil
             } else {
-                self.errorMessage = error
+                self.errorMessage = error ?? "暂时无法读取预览。"
             }
+            self.requestGeneration += 1
 
-            if self.requestedMaxPixelSize > self.loadedMaxPixelSize, !self.isLoading {
-                self.load(targetSize: CGSize(
-                    width: self.requestedMaxPixelSize,
-                    height: self.requestedMaxPixelSize
-                ))
+            if shouldLoadLargerImage {
+                self.load(targetSize: CGSize(width: requestedSize, height: requestedSize))
             }
+        }
+    }
+
+    private func cancelOutstandingRequest() {
+        timeoutWorkItem?.cancel()
+        timeoutWorkItem = nil
+        if imageRequestID != PHInvalidImageRequestID {
+            PHImageManager.default().cancelImageRequest(imageRequestID)
+            imageRequestID = PHInvalidImageRequestID
+        }
+    }
+
+    deinit {
+        timeoutWorkItem?.cancel()
+        if imageRequestID != PHInvalidImageRequestID {
+            PHImageManager.default().cancelImageRequest(imageRequestID)
         }
     }
 
@@ -544,6 +725,33 @@ private final class PhotoPreviewLoader: ObservableObject {
         }
 
         return NSImage(data: data)
+    }
+}
+
+private enum PhotosAuthorizationCoordinator {
+    private static var isRequesting = false
+    private static var completions: [(PHAuthorizationStatus) -> Void] = []
+
+    static func request(completion: @escaping (PHAuthorizationStatus) -> Void) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        guard status == .notDetermined else {
+            completion(status)
+            return
+        }
+
+        completions.append(completion)
+        guard !isRequesting else { return }
+        isRequesting = true
+
+        PHPhotoLibrary.requestAuthorization(for: .readWrite) { status in
+            DispatchQueue.main.async {
+                let pendingCompletions = completions
+                completions.removeAll()
+                isRequesting = false
+                pendingCompletions.forEach { $0(status) }
+            }
+        }
     }
 }
 

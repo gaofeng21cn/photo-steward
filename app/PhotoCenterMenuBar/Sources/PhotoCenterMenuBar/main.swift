@@ -5,7 +5,7 @@ struct PhotoCenterApp: App {
     @StateObject private var runtime = PhotoStewardRuntimeController()
 
     var body: some Scene {
-        WindowGroup("Photo Steward", id: ControlCenterView.windowID) {
+        Window("Photo Steward", id: ControlCenterView.windowID) {
             rootView
         }
         .defaultSize(width: 960, height: 640)
