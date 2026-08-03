@@ -8,7 +8,9 @@ SOURCE_DIR="$APP_DIR/Sources/PhotoCenterMenuBar"
 [[ -d "$SOURCE_DIR" ]]
 [[ -n "$(find "$SOURCE_DIR" -type f -name '*.swift' -print -quit)" ]]
 plutil -lint "$APP_DIR/Info.plist" >/dev/null
+plutil -lint "$APP_DIR/PhotoSteward.entitlements" >/dev/null
 [[ "$(plutil -extract CFBundleExecutable raw "$APP_DIR/Info.plist")" == "PhotoCenterMenuBar" ]]
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.personal-information.photos-library' "$APP_DIR/PhotoSteward.entitlements")" == "true" ]]
 [[ -n "$(plutil -extract NSNetworkVolumesUsageDescription raw "$APP_DIR/Info.plist")" ]]
 [[ -n "$(plutil -extract NSPhotoLibraryUsageDescription raw "$APP_DIR/Info.plist")" ]]
 

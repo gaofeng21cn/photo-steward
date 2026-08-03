@@ -8,6 +8,7 @@ LEGACY_APP_DIR="${HOME}/Applications/iCloud Photo Center.app"
 BUILD_DIR="$ROOT_DIR/app/PhotoCenterMenuBar/.build/release"
 SIGNING_IDENTITY="${PHOTO_CENTER_SIGNING_IDENTITY:-}"
 RUNTIME_DIR="$ROOT_DIR/tmp/photo-steward-local-runtime"
+ENTITLEMENTS="$ROOT_DIR/app/PhotoCenterMenuBar/PhotoSteward.entitlements"
 
 if [[ -z "$SIGNING_IDENTITY" ]]; then
   SIGNING_IDENTITY="$(
@@ -35,13 +36,23 @@ if [[ -n "$SIGNING_IDENTITY" ]] &&
   security find-identity -v -p codesigning | grep -Fq "\"$SIGNING_IDENTITY\""; then
   "$ROOT_DIR/scripts/sign_runtime.sh" \
     "$APP_DIR/Contents/Resources/PhotoStewardRuntime" \
-    "$SIGNING_IDENTITY"
-  if ! codesign --force --deep --options runtime --sign "$SIGNING_IDENTITY" "$APP_DIR"; then
+    "$SIGNING_IDENTITY" \
+    "$ENTITLEMENTS"
+  if ! codesign \
+    --force \
+    --options runtime \
+    --entitlements "$ENTITLEMENTS" \
+    --sign "$SIGNING_IDENTITY" \
+    "$APP_DIR"; then
     echo "Developer ID signing unavailable; falling back to ad-hoc signing" >&2
-    codesign --force --deep --sign - "$APP_DIR"
+    codesign --force --entitlements "$ENTITLEMENTS" --sign - "$APP_DIR"
   fi
 else
-  codesign --force --deep --sign - "$APP_DIR"
+  "$ROOT_DIR/scripts/sign_runtime.sh" \
+    "$APP_DIR/Contents/Resources/PhotoStewardRuntime" \
+    - \
+    "$ENTITLEMENTS"
+  codesign --force --entitlements "$ENTITLEMENTS" --sign - "$APP_DIR"
 fi
 
 printf '%s\n' "$APP_DIR"

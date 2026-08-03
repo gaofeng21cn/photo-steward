@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PACKAGE_DIR="$ROOT_DIR/app/PhotoCenterMenuBar"
 INFO_PLIST="$PACKAGE_DIR/Info.plist"
+ENTITLEMENTS="$PACKAGE_DIR/PhotoSteward.entitlements"
 ICON_FILE="$PACKAGE_DIR/Resources/PhotoSteward.icns"
 DIST_DIR="${PHOTO_STEWARD_DIST_DIR:-$ROOT_DIR/dist}"
 BUILD_ROOT="$ROOT_DIR/tmp/photo-steward-release-build"
@@ -89,8 +90,15 @@ mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
 /bin/chmod +x "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"
 "$ROOT_DIR/scripts/sign_runtime.sh" \
   "$APP_DIR/Contents/Resources/PhotoStewardRuntime" \
-  "$SIGNING_IDENTITY"
-/usr/bin/codesign --force --options runtime --timestamp --sign "$SIGNING_IDENTITY" "$APP_DIR"
+  "$SIGNING_IDENTITY" \
+  "$ENTITLEMENTS"
+/usr/bin/codesign \
+  --force \
+  --options runtime \
+  --timestamp \
+  --entitlements "$ENTITLEMENTS" \
+  --sign "$SIGNING_IDENTITY" \
+  "$APP_DIR"
 /usr/bin/codesign --verify --deep --strict "$APP_DIR"
 /usr/bin/lipo -info "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"
 
