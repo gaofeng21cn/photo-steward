@@ -19,7 +19,8 @@ fi
 REMOTE_DIR="$REMOTE_HOME/.local/share/photo-steward"
 
 run_ssh "mkdir -p '$REMOTE_DIR'"
-rsync -a -e 'ssh -o BatchMode=yes' "$ROOT_DIR/scripts/nas/photo_steward_nas_worker.py" "$NAS_HOST:$REMOTE_DIR/photo_steward_nas_worker.py"
+/usr/bin/tar -C "$ROOT_DIR/scripts/nas" -cf - photo_steward_nas_worker.py |
+  ssh -o BatchMode=yes "$NAS_HOST" "tar -C '$REMOTE_DIR' -xf -"
 DRY_RUN_RECEIPT="$(run_ssh "chmod 755 '$REMOTE_DIR/photo_steward_nas_worker.py'; '$REMOTE_DIR/photo_steward_nas_worker.py' --nas-home '$REMOTE_HOME' --dry-run")"
 printf '%s\n' "$DRY_RUN_RECEIPT"
 
