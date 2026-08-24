@@ -14,7 +14,7 @@ RUNTIME_DIR="$ROOT_DIR/tmp/test-runtime-bundle"
 [[ -f "$RUNTIME_DIR/tools/icloud_photo_sync/cli.py" ]]
 [[ -f "$RUNTIME_DIR/.runtime-manifest" ]]
 [[ -f "$RUNTIME_DIR/skills/photo-steward/SKILL.md" ]]
-[[ -f "$RUNTIME_DIR/skills/icloud-photo-center/SKILL.md" ]]
+[[ ! -e "$RUNTIME_DIR/skills/icloud-photo-center" ]]
 [[ -x "$RUNTIME_DIR/scripts/retire_launchd_agents.sh" ]]
 [[ ! -e "$RUNTIME_DIR/scripts/install_launchd_agents.sh" ]]
 [[ ! -e "$RUNTIME_DIR/scripts/run_weekly_orchestrator.sh" ]]

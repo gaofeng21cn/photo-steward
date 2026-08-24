@@ -36,12 +36,10 @@ mkdir -p \
   "$OUTPUT_DIR/vendor" \
   "$OUTPUT_DIR/scripts/lib" \
   "$OUTPUT_DIR/scripts/nas" \
-  "$OUTPUT_DIR/skills/photo-steward" \
-  "$OUTPUT_DIR/skills/icloud-photo-center"
+  "$OUTPUT_DIR/skills/photo-steward"
 
 /usr/bin/rsync -a --exclude '__pycache__' --exclude '*.pyc' "$ROOT_DIR/tools/" "$OUTPUT_DIR/tools/"
-/usr/bin/ditto "$ROOT_DIR/skills/icloud-photo-center" "$OUTPUT_DIR/skills/photo-steward"
-/usr/bin/ditto "$ROOT_DIR/skills/icloud-photo-center" "$OUTPUT_DIR/skills/icloud-photo-center"
+/usr/bin/ditto "$ROOT_DIR/skills/photo-steward" "$OUTPUT_DIR/skills/photo-steward"
 /usr/bin/ditto "$ROOT_DIR/scripts/lib/automation_common.sh" "$OUTPUT_DIR/scripts/lib/automation_common.sh"
 for script_name in \
   icloud-photo-sync \

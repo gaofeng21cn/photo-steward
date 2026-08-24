@@ -15,9 +15,8 @@ NAS mirror. It creates an auditable plan first, explains the difference, and
 only changes the mirror after explicit approval. It is not a cloud gallery,
 reverse-sync client, or general digital-asset manager.
 
-`photo-steward` is the primary CLI and Codex Skill identifier. Existing
-installations retain `icloud-photo-sync` (CLI) and `icloud-photo-center`
-(Codex Skill) as compatibility aliases.
+`photo-steward` is the CLI and Codex Skill identifier. Existing scripts may
+continue using the `icloud-photo-sync` CLI compatibility name.
 
 ## For Users
 

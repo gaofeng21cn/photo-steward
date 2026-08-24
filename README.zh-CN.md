@@ -11,7 +11,7 @@
 
 Photo Steward 用来协调本机 macOS Photos 图库、iCloud Photos 与 NAS 镜像。它先生成可审计的计划，解释差异，再在用户明确确认后变更镜像端。它不是云端相册、反向同步工具，也不是通用的照片资产管理系统。
 
-`photo-steward` 是主 CLI 与 Codex Skill 标识。为避免破坏已有自动化，仍保留 CLI `icloud-photo-sync` 和 Codex Skill `icloud-photo-center` 作为兼容别名。
+`photo-steward` 是 CLI 与 Codex Skill 的唯一标识。为避免破坏已有脚本，仍保留 CLI `icloud-photo-sync` 作为兼容名称。
 
 ## 面向用户
 

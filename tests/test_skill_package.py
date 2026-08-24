@@ -7,7 +7,7 @@ VALIDATOR = Path.home() / ".codex/skills/.system/skill-creator/scripts/quick_val
 
 
 def test_photo_center_skill_is_valid_and_discoverable() -> None:
-    skill = ROOT / "skills/icloud-photo-center"
+    skill = ROOT / "skills/photo-steward"
     result = subprocess.run(
         ["python3", str(VALIDATOR), str(skill)],
         check=False,
@@ -19,4 +19,4 @@ def test_photo_center_skill_is_valid_and_discoverable() -> None:
     skill_text = (skill / "SKILL.md").read_text()
     assert "name: photo-steward" in skill_text
     assert "photo-steward status --scope photo --format json" in skill_text
-    assert "icloud-photo-center" in skill_text
+    assert "icloud-photo-center" not in skill_text

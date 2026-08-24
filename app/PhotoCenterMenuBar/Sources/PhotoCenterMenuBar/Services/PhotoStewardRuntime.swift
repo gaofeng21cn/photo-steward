@@ -71,7 +71,7 @@ struct PhotoStewardRuntimeInstaller {
         let skillsDirectory = codexRoot.appendingPathComponent("skills", isDirectory: true)
         try fileManager.createDirectory(at: skillsDirectory, withIntermediateDirectories: true)
 
-        for name in ["photo-steward", "icloud-photo-center"] {
+        for name in ["photo-steward"] {
             let source = runtimeRoot.appendingPathComponent("skills/\(name)", isDirectory: true)
             let destination = skillsDirectory.appendingPathComponent(name, isDirectory: true)
             try removeIfPresent(destination)

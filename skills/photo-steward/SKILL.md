@@ -1,15 +1,14 @@
 ---
 name: photo-steward
-description: "Use for the iCloud-centered Photo Steward service: inspect sync health, explain configured mirror differences, create or review guarded plans, and execute only an explicitly approved exact plan through photo-steward. Never replace deterministic manifests, SHA-256, guards, receipts, or quarantine checks with visual guesses or ad hoc file copying."
+description: "Use only for the iCloud-centered Photo Steward service when inspecting sync health, explaining configured mirror differences, creating or reviewing guarded plans, or executing an explicitly approved exact plan through photo-steward. Do not use for generic photo organization, ordinary file copying, or unrelated iCloud questions. Never replace deterministic manifests, SHA-256, guards, receipts, or quarantine checks with visual guesses or ad hoc file copying."
 ---
 
 # Photo Steward
 
-Use this skill for Photo Steward questions about iCloud Photos as the authority,
-NAS mirror health, missing photos, date relocation, quarantine, or off-site
-backup. The primary Skill and command name is `photo-steward`. The installer
-also provides the legacy `icloud-photo-center` Skill alias and
-`icloud-photo-sync` command for existing installations.
+Use this skill only for Photo Steward questions about iCloud Photos as the
+authority, NAS mirror health, missing photos, date relocation, quarantine, or
+off-site backup. The Skill and primary command name is `photo-steward`; the
+legacy CLI command `icloud-photo-sync` remains available for existing scripts.
 
 ## Boundary
 
