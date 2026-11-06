@@ -1,0 +1,34 @@
+{
+  "schema_version": "opl-package-app-contribution-adapter.v1",
+  "reads": {
+    "photo.steward.v1#status": {
+      "kind": "command",
+      "cwd": "package",
+      "argv": ["photo-steward", "status", "--scope", "photo", "--format", "json"],
+      "transform": "photo_status"
+    },
+    "photo.steward.v1#preflight": {
+      "kind": "command",
+      "cwd": "package",
+      "argv": ["photo-steward", "preflight"]
+    },
+    "photo.steward.v1#plan": {
+      "kind": "command",
+      "cwd": "package",
+      "argv": ["photo-steward", "pending-plan"],
+      "transform": "photo_pending_plan"
+    },
+    "photo.steward.v1#plan.exact": {
+      "kind": "command",
+      "cwd": "package",
+      "argv": ["photo-steward", "plan-details", "--plan-dir", "${input.plan_dir}"]
+    }
+  },
+  "actions": {
+    "photo.steward.v1#plan.apply": {
+      "kind": "command",
+      "cwd": "package",
+      "argv": ["photo-steward", "apply-job", "--plan-dir", "${input.plan_dir}"]
+    }
+  }
+}
