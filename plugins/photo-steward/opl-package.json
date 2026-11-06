@@ -3,7 +3,7 @@
   "package_id": "photo-steward",
   "display_name": "Photo Steward",
   "publisher": "gaofeng21cn",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "source": "first_party",
   "source_repo": "https://github.com/gaofeng21cn/photo-steward.git",
   "package_role": "capability_package",
@@ -33,7 +33,7 @@
       "plugin_selector": "photo-steward@photo-steward",
       "executor_route": "codex_cli",
       "marketplace_source": "gaofeng21cn/photo-steward",
-      "publication_ref": null
+      "publication_ref": "ghcr.io/gaofeng21cn/one-person-lab-packages/photo-steward:latest-stable"
     },
     "optional_install_policy": "all_exported_skills",
     "app_contribution_abi": {
@@ -135,6 +135,6 @@
       "skills/photo-steward/SKILL.md",
       "skills/photo-steward/agents/openai.yaml"
     ],
-    "digest": "sha256:e2b02633d5221ad8b5e47f5036c67aac13ad1a5d5e85e4b41a81ecde055a557a"
+    "digest": "sha256:1976d85ef5272bef5c061936a7d8704a8e71695bd170382646605c1cabb4cf77"
   }
 }
