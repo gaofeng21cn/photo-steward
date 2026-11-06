@@ -114,6 +114,7 @@ def _require_arguments(args: argparse.Namespace) -> None:
         "status": ("status_dir",),
         "record-failure": ("status_dir",),
         "latest-plan": ("logs_root",),
+        "pending-plan": ("status_dir",),
         "plan-details": ("nas_root",),
         "plan": (
             "library_path",
@@ -264,6 +265,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     latest_plan_parser = subparsers.add_parser("latest-plan")
     latest_plan_parser.add_argument("--logs-root", type=Path)
+
+    pending_plan_parser = subparsers.add_parser(
+        "pending-plan",
+        help="read the current plan awaiting review from the status owner",
+    )
+    pending_plan_parser.add_argument("--status-dir", type=Path)
+    pending_plan_parser.add_argument("--nas-root", type=Path)
 
     plan_details_parser = subparsers.add_parser(
         "plan-details",
@@ -426,6 +434,37 @@ def main(argv: list[str] | None = None) -> int:
         except ConfigError as exc:
             print(str(exc), file=sys.stderr)
             return 1
+        return 0
+
+    if args.command == "pending-plan":
+        try:
+            plan_status = json.loads(
+                (args.status_dir / "latest_plan.json").read_text(encoding="utf-8")
+            )
+            pending = plan_status.get("pending_plan_dir")
+            if not isinstance(pending, str) or not pending:
+                print(json.dumps({
+                    "state": "empty",
+                    "reason": "no_plan_awaiting_review",
+                    "source_ref": str(args.status_dir),
+                }, ensure_ascii=False, indent=2))
+                return 0
+            payload = build_plan_details(Path(pending), nas_root=args.nas_root)
+        except FileNotFoundError:
+            print(json.dumps({
+                "state": "empty",
+                "reason": "status_owner_not_initialized",
+                "source_ref": str(args.status_dir),
+            }, ensure_ascii=False, indent=2))
+            return 0
+        except (OSError, KeyError, json.JSONDecodeError) as exc:
+            print(f"cannot read pending plan: {exc}", file=sys.stderr)
+            return 1
+        print(json.dumps({
+            "state": "ready",
+            "plan_dir": pending,
+            "plan": payload,
+        }, ensure_ascii=False, indent=2))
         return 0
 
     if args.command == "plan-details":

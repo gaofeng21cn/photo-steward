@@ -32,6 +32,7 @@ def test_cli_parser_supports_all_supported_subcommands() -> None:
     preflight_args = parser.parse_args(["preflight"])
     status_args = parser.parse_args(["status"])
     plan_details_args = parser.parse_args(["plan-details", "--plan-dir", "/tmp/plan"])
+    pending_plan_args = parser.parse_args(["pending-plan"])
     plan_args = parser.parse_args(["plan"])
     apply_args = parser.parse_args(["apply", "--plan-dir", "/tmp/plan"])
     plan_job_args = parser.parse_args(["plan-job"])
@@ -80,6 +81,7 @@ def test_cli_parser_supports_all_supported_subcommands() -> None:
     assert status_args.command == "status"
     assert status_args.scope == "photo"
     assert plan_details_args.command == "plan-details"
+    assert pending_plan_args.command == "pending-plan"
     assert str(plan_details_args.plan_dir) == "/tmp/plan"
     assert plan_args.command == "plan"
     assert apply_args.command == "apply"
@@ -228,6 +230,43 @@ def test_plan_details_returns_review_projection(tmp_path, capsys) -> None:
     assert payload["plan_id"] == "plan-a"
     assert [item["action"] for item in payload["items"]] == ["mirror", "quarantine"]
     assert payload["items"][1]["source_path"].endswith("/nas/Photos/2026/07/IMG_6700.HEIC")
+
+
+def test_pending_plan_reads_only_the_status_owner_pointer(tmp_path, capsys) -> None:
+    config_path = tmp_path / "config.toml"
+    _write_config(config_path, tmp_path)
+    status_dir = tmp_path / "state" / "status"
+    plan_dir = tmp_path / "nas" / "Receipts" / "2026-07-28" / "plan-a"
+    plan_dir.mkdir(parents=True)
+    status_dir.mkdir(parents=True)
+    (plan_dir / "plan_summary.json").write_text(
+        json.dumps({"plan_id": "plan-a", "mirror_count": 0, "delete_count": 0, "unresolved_count": 0}),
+        encoding="utf-8",
+    )
+    (plan_dir / "mirror_to_nas.json").write_text('{"items":[]}', encoding="utf-8")
+    (plan_dir / "move_to_nas_deleted_pool.json").write_text('{"items":[]}', encoding="utf-8")
+    (status_dir / "latest_plan.json").write_text(
+        json.dumps({"status": "success", "pending_plan_dir": str(plan_dir)}),
+        encoding="utf-8",
+    )
+
+    assert cli.main(["--config", str(config_path), "pending-plan"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["state"] == "ready"
+    assert payload["plan"]["plan_id"] == "plan-a"
+
+
+def test_pending_plan_reports_uninitialized_status_as_empty(tmp_path, capsys) -> None:
+    config_path = tmp_path / "config.toml"
+    _write_config(config_path, tmp_path)
+
+    assert cli.main(["--config", str(config_path), "pending-plan"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload == {
+        "state": "empty",
+        "reason": "status_owner_not_initialized",
+        "source_ref": str(tmp_path / "state" / "status"),
+    }
 
 
 def test_receipt_result_returns_nonzero_for_partial(tmp_path, capsys) -> None:
