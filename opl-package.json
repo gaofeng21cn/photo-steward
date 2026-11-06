@@ -3,7 +3,7 @@
   "package_id": "photo-steward",
   "display_name": "Photo Steward",
   "publisher": "gaofeng21cn",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "source": "first_party",
   "source_repo": "https://github.com/gaofeng21cn/photo-steward.git",
   "package_role": "capability_package",
@@ -136,6 +136,6 @@
       "skills/photo-steward/SKILL.md",
       "skills/photo-steward/agents/openai.yaml"
     ],
-    "digest": "sha256:c7dfe2bd0857fae8389d79acac9c530650f869ce894c6f4c27c8ac10150a4329"
+    "digest": "sha256:00acf8251d9d598eb58c653f23cfdc18f81859f9f2b73a82d275a440888e9e06"
   }
 }
