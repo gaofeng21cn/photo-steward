@@ -186,7 +186,7 @@ Manual wrappers and the App call the same CLI. See
 
 ## Current Release
 
-Version `0.4.4` is the current integrated macOS release. Its universal App
+Version `0.4.5` is the current integrated macOS release. Its universal App
 contains the CLI runtime, prebuilt Photos bridge, Codex Skill, first-run setup,
 in-app NAS configuration, and reviewable photo plans. The public archive is
 signed with Apple Developer ID, notarized, stapled, and accepted by Gatekeeper.
