@@ -1,7 +1,7 @@
 # Release
 
 This document separates a public source release from a notarized macOS App
-release. Photo Steward `v0.4.5` is the current integrated-installer App release.
+release. Photo Steward `v0.4.6` is the current integrated-installer App release.
 
 ## Local Validation
 
