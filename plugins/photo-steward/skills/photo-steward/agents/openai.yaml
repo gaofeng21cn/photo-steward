@@ -1,0 +1,7 @@
+interface:
+  display_name: "Photo Steward"
+  short_description: "Review and run guarded iCloud photo plans"
+  brand_color: "#0A84FF"
+  default_prompt: "Use $photo-steward to inspect Photo Steward health and explain any pending NAS plan."
+policy:
+  allow_implicit_invocation: true

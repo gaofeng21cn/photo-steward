@@ -3,7 +3,7 @@
   "package_id": "photo-steward",
   "display_name": "Photo Steward",
   "publisher": "gaofeng21cn",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "source": "first_party",
   "source_repo": "https://github.com/gaofeng21cn/photo-steward.git",
   "package_role": "capability_package",
@@ -13,8 +13,12 @@
     "compatibility_policy": "same_major"
   },
   "exports": {
-    "core_skill_ids": ["photo-steward"],
-    "core_module_ids": ["photo.steward.v1"],
+    "core_skill_ids": [
+      "photo-steward"
+    ],
+    "core_module_ids": [
+      "photo.steward.v1"
+    ],
     "optional_skill_policy_ref": "opl-package.json#/exports",
     "optional_skills_installed_by_default": true,
     "default_materialization_policy": "all_exported_skills"
@@ -35,7 +39,13 @@
     "app_contribution_abi": {
       "schema_version": "opl-package-app-contribution-cli.v1",
       "transport": "stdin_json_stdout_json",
-      "argv": ["opl", "app", "contribution", "adapter", "--stdin"],
+      "argv": [
+        "opl",
+        "app",
+        "contribution",
+        "adapter",
+        "--stdin"
+      ],
       "request_schema": "opl-package-app-contribution-request.v1",
       "response_schema": "opl-package-app-contribution-response.v1"
     },
@@ -54,7 +64,9 @@
           "en-US": "Photo mirror plan"
         },
         "data_ref": "photo.steward.v1#plan",
-        "command_ids": ["photo.steward.apply"],
+        "command_ids": [
+          "photo.steward.apply"
+        ],
         "empty_state_i18n": {
           "zh-CN": "没有待审核的照片镜像计划",
           "en-US": "No photo mirror plan is awaiting review"
@@ -112,5 +124,17 @@
     "artifact_owner": "photo-steward",
     "review_and_apply_owner": "photo-steward",
     "adapter_can_mutate": false
+  },
+  "content_lock": {
+    "algorithm": "sha256",
+    "canonicalization": "ordered_path_length_file_length_bytes",
+    "paths": [
+      ".codex-plugin/plugin.json",
+      "app-contribution-adapter.json",
+      "plugin.json",
+      "skills/photo-steward/SKILL.md",
+      "skills/photo-steward/agents/openai.yaml"
+    ],
+    "digest": "sha256:e2b02633d5221ad8b5e47f5036c67aac13ad1a5d5e85e4b41a81ecde055a557a"
   }
 }

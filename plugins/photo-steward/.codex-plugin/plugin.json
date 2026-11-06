@@ -1,0 +1,32 @@
+{
+  "name": "photo-steward",
+  "version": "0.4.3",
+  "description": "Review guarded iCloud Photos mirror plans before explicit execution.",
+  "author": {
+    "name": "Gao Feng"
+  },
+  "repository": "https://github.com/gaofeng21cn/photo-steward",
+  "license": "Apache-2.0",
+  "keywords": [
+    "photos",
+    "icloud",
+    "backup",
+    "opl"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Photo Steward",
+    "shortDescription": "Review photo mirror plans and status.",
+    "longDescription": "Inspect guarded iCloud Photos mirror status and exact plans in a shared MCP App, then leave explicit plan execution and owner receipts to Photo Steward.",
+    "developerName": "Gao Feng",
+    "category": "Productivity",
+    "capabilities": [
+      "Photo mirror plans",
+      "Explicit approval"
+    ],
+    "defaultPrompt": [
+      "Inspect my Photo Steward status.",
+      "Review the pending Photo Steward mirror plan."
+    ]
+  }
+}
