@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import shutil
+import subprocess
 from pathlib import Path
+
+from _opl_package_content_lock import content_lock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,23 +21,6 @@ def _write_json(path: Path, value: object) -> None:
         json.dumps(value, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
-
-
-def _content_lock(paths: list[str]) -> dict[str, object]:
-    digest = hashlib.sha256()
-    for relative in paths:
-        encoded = relative.encode("utf-8")
-        body = (CARRIER / relative).read_bytes()
-        digest.update(len(encoded).to_bytes(8, "big"))
-        digest.update(encoded)
-        digest.update(len(body).to_bytes(8, "big"))
-        digest.update(body)
-    return {
-        "algorithm": "sha256",
-        "canonicalization": "ordered_path_length_file_length_bytes",
-        "paths": paths,
-        "digest": f"sha256:{digest.hexdigest()}",
-    }
 
 
 def materialize(*, check: bool = False) -> bool:
@@ -55,7 +40,7 @@ def materialize(*, check: bool = False) -> bool:
         and "__pycache__" not in path.parts
         and path.name != "opl-package.json"
     )
-    lock = _content_lock(paths)
+    lock = content_lock(CARRIER, paths)
     root_manifest["content_lock"] = lock
     carrier_manifest = (
         json.loads(carrier_manifest_path.read_text())
@@ -76,7 +61,14 @@ def materialize(*, check: bool = False) -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--framework-root", type=Path, help="Verify the generated content-lock helper against Framework source")
     args = parser.parse_args()
+    if args.framework_root:
+        subprocess.run([
+            "node", str(args.framework_root / "scripts/materialize-python-support.mjs"),
+            "--module", "package_content_lock", "--target",
+            str(Path(__file__).with_name("_opl_package_content_lock.py")), "--check",
+        ], check=True)
     valid = materialize(check=args.check)
     print(json.dumps({"status": "passed" if valid else "stale"}))
     return 0 if valid else 2

@@ -207,6 +207,8 @@ attribution requirements.
 
 ## Verification
 
+Package content-lock encoding is owned by Framework. The portable `scripts/_opl_package_content_lock.py` copy is generated with Framework's `scripts/materialize-python-support.mjs --module package_content_lock --target /path/to/photo-steward/scripts/_opl_package_content_lock.py`. Run `python3 scripts/materialize_package.py --check --framework-root /path/to/one-person-lab` to verify both the carrier and byte-for-byte helper parity.
+
 ```bash
 python3 -m pytest tests -q
 swift build --package-path app/PhotoCenterMenuBar -c release
