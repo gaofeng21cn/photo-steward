@@ -183,6 +183,6 @@ zsh tests/test_runtime_bundle.sh
 
 Package 的状态和计划视图由 Photo CLI 直接输出：`status --view`、`pending-plan --view`。后者可加 `--plan-dir <精确目录>` 重开已完成或中断的计划，不依赖待办指针。`review-view --plan-dir` 返回同一共享视图，`plan-details --plan-dir` 返回对应机器数据。计划 revision 绑定计划文件字节及镜像/隔离目录。
 
-共享执行调用 `apply-reviewed-plan`，绑定 `plan_dir`、`plan_revision`、`request_id`，仍由原 `run_apply_job` 执行并保留原文件状态/内容守卫。Agent 与 UI 都可回读同一 operation/receipt；旧计划或目标变化在执行前拒绝，重复请求不重复执行。部分完成或结果未知时先检查原回执和目标，再生成并审核剩余工作的新计划。没有 UI 也可直接使用这些 JSON 命令。
+共享执行调用 `apply-reviewed-plan`，绑定 `plan_dir`、`plan_revision`、`request_id`，仍由原 `run_apply_job` 执行并保留原文件状态/内容守卫。Agent 与 UI 都可回读同一 operation/receipt；旧计划或目标变化在执行前拒绝，领域执行始终消费同一份已校验计划字节；旧目标/版本的回执显示冲突，不能冒充当前成功。重复请求不重复执行。部分完成或结果未知时先检查原回执和目标，再生成并审核剩余工作的新计划。没有 UI 也可直接使用这些 JSON 命令。
 
 新 descriptor 需要匹配版本 CLI；本次源码改动不替换已安装 App。合成测试验证领域交接与本地文件操作，真实 Photos/NAS 权限、安装及跨宿主 UI 分别验收。

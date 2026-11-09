@@ -200,8 +200,10 @@ Shared actions call `apply-reviewed-plan --plan-dir <directory>
 `rejected`, and `outcome_unknown`; progress goes to stderr. The contribution
 adapter uses `--contribution` to return the standard OPL response envelope.
 Plan directory, revision, and request identity are bound read-only form inputs.
-Changed plan/target revisions are rejected before execution; existing file
-state and content guards still run during apply. Repeated calls and reopening
+Changed plan/target revisions are rejected before execution; the owner validates
+and executes the same captured plan bytes, including binding updates. Existing
+file state and content guards still run during apply. Receipts must match the
+current plan identity and revision; an old target's success is a review conflict. Repeated calls and reopening
 read the original operation/receipt, including a lost or interrupted response.
 For partial or unknown outcomes, inspect the receipt and actual targets, then
 create and review a fresh remaining-work plan; reopening never repeats apply.

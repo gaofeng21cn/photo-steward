@@ -14,6 +14,7 @@ from .photos_bridge import PhotosBridge, PhotosResourceDescriptor
 from .photos_db import AssetMeta, load_asset_index_if_available
 from .planner import build_sync_plan
 from .state import StateStore
+from .review import plan_revision, read_plan_snapshot
 from .utils import normalize_filename
 
 
@@ -485,7 +486,13 @@ def run_apply(
     deleted_root: Path,
     state_db: Path,
     swift_source: Path,
+    plan_snapshot: dict[str, bytes] | None = None,
+    expected_plan_revision: str | None = None,
 ) -> Path:
+    captured = read_plan_snapshot(plan_dir) if plan_snapshot is None else plan_snapshot
+    revision = plan_revision(plan_dir, nas_root=nas_root, deleted_root=deleted_root, snapshot=captured)
+    if expected_plan_revision is not None and revision != expected_plan_revision:
+        raise ValueError("plan_revision_conflict")
     store = StateStore(state_db)
     bridge = PhotosBridge(swift_source=swift_source, build_dir=state_db.parent / "bin")
 
@@ -525,13 +532,14 @@ def run_apply(
         nas_root=nas_root,
         deleted_root=deleted_root,
         exporter=PhotosPlanExporter(),
+        plan_snapshot=captured,
+        plan_revision_value=revision,
     )
     receipt_path = Path(plan_dir) / "apply_receipt.json"
     store.record_apply(receipt["plan_id"], str(receipt_path), json.dumps(receipt, ensure_ascii=False))
     if receipt.get("status") == "success":
-        bindings_path = Path(plan_dir) / "proposed_bindings.json"
-        if bindings_path.exists():
-            bindings_payload = json.loads(bindings_path.read_text(encoding="utf-8"))
+        if captured["proposed_bindings.json"]:
+            bindings_payload = json.loads(captured["proposed_bindings.json"])
             if bindings_payload.get("plan_id") != receipt["plan_id"]:
                 store.close()
                 raise ValueError("proposed bindings plan_id does not match apply receipt")

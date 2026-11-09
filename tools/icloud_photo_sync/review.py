@@ -13,27 +13,45 @@ PLAN_FILES = ("plan_summary.json", "mirror_to_nas.json", "move_to_nas_deleted_po
 OPERATION_FILE = "review_apply_operation.json"
 
 
+def read_plan_snapshot(plan_dir: Path) -> dict[str, bytes]:
+    return {name: (Path(plan_dir) / name).read_bytes() if (Path(plan_dir) / name).exists() else b""
+            for name in PLAN_FILES}
+
+
 def plan_revision(plan_dir: Path, *, nas_root: Path | None = None,
-                  deleted_root: Path | None = None) -> str:
+                  deleted_root: Path | None = None, snapshot: dict[str, bytes] | None = None) -> str:
     # Bind the reviewed plan bytes and both configured mutation targets.
     digest = hashlib.sha256()
+    captured = read_plan_snapshot(plan_dir) if snapshot is None else snapshot
     for name in PLAN_FILES:
-        path = Path(plan_dir) / name
-        data = path.read_bytes() if path.exists() else b""
+        data = captured[name]
         digest.update(name.encode() + b"\0" + str(len(data)).encode() + b"\0" + data)
     for target in (nas_root, deleted_root):
         digest.update(b"\0" + (str(Path(target).resolve()) if target else "").encode())
     return "sha256:" + digest.hexdigest()
 
 
-def read_apply_result(plan_dir: Path) -> dict:
+def read_apply_result(plan_dir: Path, *, expected_revision: str | None = None, plan_id: str | None = None) -> dict:
     result = {}
     for key, name in (("operation", OPERATION_FILE), ("receipt", "apply_receipt.json")):
         path = Path(plan_dir) / name
         if path.exists():
-            result[key] = json.loads(path.read_text(encoding="utf-8"))
+            content = path.read_bytes()
+            result[key] = json.loads(content)
             result[key + "_ref"] = str(path)
-    if result.get("operation", {}).get("status") == "started":
+            if key == "receipt":
+                result["receipt_sha256"] = hashlib.sha256(content).hexdigest()
+    bindings = [result[key] for key in ("operation", "receipt") if key in result]
+    if expected_revision is not None and any(
+        binding.get("plan_revision") != expected_revision or binding.get("plan_id") != plan_id
+        for binding in bindings
+    ):
+        result["outcome"] = "receipt_revision_conflict"
+    elif result.get("operation", {}).get("receipt_sha256") and (
+        result["operation"]["receipt_sha256"] != result.get("receipt_sha256")
+    ):
+        result["outcome"] = "receipt_changed"
+    elif result.get("operation", {}).get("status") == "started":
         # A missing terminal write is not permission to repeat a mutation.
         result["outcome"] = "outcome_unknown"
     else:
@@ -85,7 +103,7 @@ def _write_operation(path: Path, operation: dict) -> None:
 
 
 def apply_reviewed_plan(*, plan_dir: Path, plan_revision_value: str, request_id: str,
-                        nas_root: Path, deleted_root: Path, apply_runner: Callable[[], Path],
+                        nas_root: Path, deleted_root: Path, apply_runner: Callable[[dict[str, bytes]], Path],
                         preflight: Callable[[], object] | None = None) -> dict:
     """Claim one exact plan once; retries return its owner receipt, never reapply."""
     plan_dir = Path(plan_dir)
@@ -96,13 +114,14 @@ def apply_reviewed_plan(*, plan_dir: Path, plan_revision_value: str, request_id:
     # The claim is stored beside the existing plan/receipt, not in another task store.
     with (plan_dir / ".review-apply.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        current = plan_revision(plan_dir, nas_root=nas_root, deleted_root=deleted_root)
+        snapshot = read_plan_snapshot(plan_dir)
+        current = plan_revision(plan_dir, nas_root=nas_root, deleted_root=deleted_root, snapshot=snapshot)
         if current != plan_revision_value:
             return {**base, "status": "rejected", "error": "plan_revision_conflict", "current_revision": current}
-        existing = read_apply_result(plan_dir)
+        summary = json.loads(snapshot["plan_summary.json"])
+        existing = read_apply_result(plan_dir, expected_revision=current, plan_id=summary["plan_id"])
         if existing["outcome"] != "not_started":
             return {**base, "status": existing["outcome"], "replayed": True, **existing}
-        summary = json.loads((plan_dir / "plan_summary.json").read_text(encoding="utf-8"))
         if summary.get("unresolved_count", 0):
             return {**base, "status": "rejected", "error": "plan_unresolved"}
         if preflight is not None:
@@ -114,16 +133,21 @@ def apply_reviewed_plan(*, plan_dir: Path, plan_revision_value: str, request_id:
         operation = {**base, "plan_id": summary["plan_id"], "status": "started"}
         _write_operation(operation_path, operation)
         try:
-            receipt_path = apply_runner()
-            receipt = json.loads(Path(receipt_path).read_text(encoding="utf-8"))
-            operation.update(status=receipt.get("status", "outcome_unknown"), receipt_ref=str(receipt_path))
+            receipt_path = apply_runner(snapshot)
+            receipt_bytes = Path(receipt_path).read_bytes()
+            receipt = json.loads(receipt_bytes)
+            operation.update(status=receipt.get("status", "outcome_unknown"), receipt_ref=str(receipt_path),
+                             receipt=receipt, receipt_sha256=hashlib.sha256(receipt_bytes).hexdigest())
         except Exception as exc:  # the mutation may have completed before its caller failed
             operation.update(status="outcome_unknown", error=type(exc).__name__)
             receipt_path = plan_dir / "apply_receipt.json"
             if receipt_path.exists():
-                receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+                receipt_bytes = receipt_path.read_bytes()
+                receipt = json.loads(receipt_bytes)
                 if receipt.get("status") == "partial":
                     operation["status"] = "partial"
-                operation["receipt_ref"] = str(receipt_path)
+                operation.update(receipt_ref=str(receipt_path), receipt=receipt,
+                                 receipt_sha256=hashlib.sha256(receipt_bytes).hexdigest())
         _write_operation(operation_path, operation)
-        return {**operation, **read_apply_result(plan_dir)}
+        result = read_apply_result(plan_dir, expected_revision=current, plan_id=summary["plan_id"])
+        return {**operation, **result, "status": result["outcome"]}

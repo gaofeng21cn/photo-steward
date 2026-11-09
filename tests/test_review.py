@@ -4,7 +4,7 @@ from pathlib import Path
 
 from tools.icloud_photo_sync.apply import execute_apply
 from tools.icloud_photo_sync.plan_details import build_plan_details
-from tools.icloud_photo_sync.review import apply_reviewed_plan, plan_view, read_apply_result
+from tools.icloud_photo_sync.review import apply_reviewed_plan, plan_view, read_apply_result, plan_revision as build_revision
 from tools.icloud_photo_sync.utils import file_state_token
 
 
@@ -30,9 +30,10 @@ def test_review_apply_reopen_and_retry_keep_same_owner_receipt(tmp_path):
     view = plan_view(plan_dir, detail)
     action = view["data"]["items"][0]["actions"][0]["input"]
     calls = []
-    def run():
+    def run(snapshot):
         calls.append(True)
-        execute_apply(plan_dir, nas, deleted)
+        execute_apply(plan_dir, nas, deleted, plan_snapshot=snapshot,
+            plan_revision_value=build_revision(plan_dir, nas_root=nas, deleted_root=deleted, snapshot=snapshot))
         return plan_dir / "apply_receipt.json"
     def apply():
         return apply_reviewed_plan(plan_dir=plan_dir, plan_revision_value=action["plan_revision"],
@@ -53,7 +54,7 @@ def test_review_apply_reopen_and_retry_keep_same_owner_receipt(tmp_path):
 def test_review_rejects_changed_plan_or_target_before_mutation(tmp_path):
     plan_dir, nas, deleted, _ = photo_plan(tmp_path)
     revision = build_plan_details(plan_dir, nas_root=nas, deleted_root=deleted)["revision"]
-    def never():
+    def never(snapshot):
         raise AssertionError("a stale plan must not execute")
     changed = apply_reviewed_plan(plan_dir=plan_dir, plan_revision_value=revision, request_id="target",
         nas_root=tmp_path / "different-nas", deleted_root=deleted, apply_runner=never)
@@ -69,7 +70,7 @@ def test_unknown_outcome_reopen_does_not_repeat_mutation(tmp_path):
     plan_dir, nas, deleted, _ = photo_plan(tmp_path)
     revision = build_plan_details(plan_dir, nas_root=nas, deleted_root=deleted)["revision"]
     calls = []
-    def interrupted():
+    def interrupted(snapshot):
         calls.append(True)
         (nas / "partial-side-effect").write_text("synthetic")
         raise ConnectionError("lost response")
@@ -86,8 +87,9 @@ def test_changed_source_yields_partial_receipt_without_overwrite(tmp_path):
     plan_dir, nas, deleted, source = photo_plan(tmp_path)
     revision = build_plan_details(plan_dir, nas_root=nas, deleted_root=deleted)["revision"]
     source.write_bytes(b"changed after review")
-    def run():
-        execute_apply(plan_dir, nas, deleted)
+    def run(snapshot):
+        execute_apply(plan_dir, nas, deleted, plan_snapshot=snapshot,
+            plan_revision_value=build_revision(plan_dir, nas_root=nas, deleted_root=deleted, snapshot=snapshot))
         return plan_dir / "apply_receipt.json"
     result = apply_reviewed_plan(plan_dir=plan_dir, plan_revision_value=revision, request_id="changed-source",
         nas_root=nas, deleted_root=deleted, apply_runner=run)
@@ -100,9 +102,78 @@ def test_revoked_mount_rejects_before_operation_claim(tmp_path):
     revision = build_plan_details(plan_dir, nas_root=nas, deleted_root=deleted)["revision"]
     def denied():
         raise PermissionError("permission revoked")
-    def never():
+    def never(snapshot):
         raise AssertionError("revoked mount must not mutate")
     result = apply_reviewed_plan(plan_dir=plan_dir, plan_revision_value=revision, request_id="revoked",
         nas_root=nas, deleted_root=deleted, apply_runner=never, preflight=denied)
     assert result["status"] == "rejected" and result["error"] == "preflight_failed"
     assert read_apply_result(plan_dir)["outcome"] == "not_started"
+
+
+def test_old_receipt_cannot_confirm_a_new_target_revision(tmp_path):
+    plan_dir, nas, deleted, _ = photo_plan(tmp_path)
+    first = build_plan_details(plan_dir, nas_root=nas, deleted_root=deleted)
+    def run(snapshot):
+        execute_apply(plan_dir, nas, deleted, plan_snapshot=snapshot,
+            plan_revision_value=build_revision(plan_dir, nas_root=nas, deleted_root=deleted, snapshot=snapshot))
+        return plan_dir / "apply_receipt.json"
+    assert apply_reviewed_plan(plan_dir=plan_dir, plan_revision_value=first["revision"], request_id="first",
+        nas_root=nas, deleted_root=deleted, apply_runner=run)["status"] == "success"
+    new_target = tmp_path / "new-target"
+    new_target.mkdir()
+    reviewed = build_plan_details(plan_dir, nas_root=new_target, deleted_root=deleted)
+    assert reviewed["revision"] != first["revision"]
+    assert reviewed["apply_result"]["outcome"] == "receipt_revision_conflict"
+    assert plan_view(plan_dir, reviewed)["data"]["items"][0]["actions"] == []
+    def never(snapshot):
+        raise AssertionError("old receipt cannot be reused for another target")
+    result = apply_reviewed_plan(plan_dir=plan_dir, plan_revision_value=reviewed["revision"], request_id="second",
+        nas_root=new_target, deleted_root=deleted, apply_runner=never)
+    assert result["status"] == "receipt_revision_conflict"
+    assert not (new_target / "photo.jpg").exists()
+
+
+def test_actual_owner_executes_frozen_review_bytes_when_plan_changes_during_preflight(tmp_path):
+    from tools.icloud_photo_sync.runtime import run_apply
+    plan_dir, nas, deleted, source = photo_plan(tmp_path)
+    first = build_plan_details(plan_dir, nas_root=nas, deleted_root=deleted)
+    def change_plan():
+        path = plan_dir / "mirror_to_nas.json"
+        changed = json.loads(path.read_text())
+        changed["items"][0]["target_relative_path"] = "unreviewed.jpg"
+        path.write_text(json.dumps(changed))
+    def run(snapshot):
+        return run_apply(plan_dir=plan_dir, nas_root=nas, deleted_root=deleted,
+            state_db=tmp_path / "state.db", swift_source=tmp_path / "unused.swift",
+            plan_snapshot=snapshot, expected_plan_revision=first["revision"])
+    result = apply_reviewed_plan(plan_dir=plan_dir, plan_revision_value=first["revision"], request_id="frozen",
+        nas_root=nas, deleted_root=deleted, apply_runner=run, preflight=change_plan)
+    assert result["status"] == "success"
+    assert (nas / "photo.jpg").read_bytes() == source.read_bytes()
+    assert not (nas / "unreviewed.jpg").exists()
+    assert result["receipt"]["plan_revision"] == first["revision"]
+    reopened = build_plan_details(plan_dir, nas_root=nas, deleted_root=deleted)
+    assert reopened["apply_result"]["outcome"] == "receipt_revision_conflict"
+
+
+def test_legacy_reapply_cannot_replace_the_reviewed_operation_receipt(tmp_path):
+    from tools.icloud_photo_sync.runtime import run_apply
+    plan_dir, nas, deleted, source = photo_plan(tmp_path)
+    first = build_plan_details(plan_dir, nas_root=nas, deleted_root=deleted)
+    def run(snapshot):
+        return run_apply(plan_dir=plan_dir, nas_root=nas, deleted_root=deleted,
+            state_db=tmp_path / "state.db", swift_source=tmp_path / "unused.swift",
+            plan_snapshot=snapshot, expected_plan_revision=first["revision"])
+    initial = apply_reviewed_plan(plan_dir=plan_dir, plan_revision_value=first["revision"], request_id="original",
+        nas_root=nas, deleted_root=deleted, apply_runner=run)
+    assert initial["status"] == "success"
+    source.write_bytes(b"changed source")
+    run_apply(plan_dir=plan_dir, nas_root=nas, deleted_root=deleted,
+              state_db=tmp_path / "state.db", swift_source=tmp_path / "unused.swift")
+    reopened = build_plan_details(plan_dir, nas_root=nas, deleted_root=deleted)
+    result = reopened["apply_result"]
+    assert result["outcome"] == "receipt_changed"
+    assert result["receipt"]["status"] == "partial"
+    assert result["operation"]["receipt"] == initial["receipt"]
+    assert result["operation"]["receipt"]["status"] == "success"
+    assert plan_view(plan_dir, reopened)["data"]["items"][0]["actions"] == []

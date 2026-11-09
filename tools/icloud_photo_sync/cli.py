@@ -521,10 +521,11 @@ def main(argv: list[str] | None = None) -> int:
                     plan_dir=args.plan_dir, plan_revision_value=args.plan_revision, request_id=args.request_id,
                     nas_root=args.nas_root, deleted_root=args.deleted_root,
                     preflight=lambda: _preflight_nas(args),
-                    apply_runner=lambda: run_apply_job(
+                    apply_runner=lambda snapshot: run_apply_job(
                         plan_dir=args.plan_dir, nas_root=args.nas_root, deleted_root=args.deleted_root,
                         state_db=args.state_db, swift_source=args.swift_source, status_dir=args.status_dir,
                         nas_mount_root=args.nas_mount_root, expected_nas_filesystem=args.expected_nas_filesystem,
+                        plan_snapshot=snapshot, expected_plan_revision=args.plan_revision,
                     ),
                 )
         except (OSError, ValueError, KeyError) as exc:

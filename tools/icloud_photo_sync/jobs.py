@@ -300,6 +300,8 @@ def run_apply_job(
     expected_nas_filesystem: str = "smbfs",
     apply_runner: Callable[..., Path] = run_apply,
     mount_probe: Callable[..., dict] = inspect_mount,
+    plan_snapshot: dict[str, bytes] | None = None,
+    expected_plan_revision: str | None = None,
 ) -> Path:
     started_at = _now_iso()
     try:
@@ -314,6 +316,8 @@ def run_apply_job(
             deleted_root=deleted_root,
             state_db=state_db,
             swift_source=swift_source,
+            **({"plan_snapshot": plan_snapshot, "expected_plan_revision": expected_plan_revision}
+               if plan_snapshot is not None or expected_plan_revision is not None else {}),
         )
         receipt = _read_json(Path(receipt_path))
     except Exception as exc:  # noqa: BLE001

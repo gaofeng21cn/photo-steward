@@ -3,19 +3,17 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .review import plan_revision, read_apply_result
-
-
-def _read_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
+from .review import plan_revision, read_apply_result, read_plan_snapshot
 
 
 def build_plan_details(plan_dir: Path, *, nas_root: Path | None = None, deleted_root: Path | None = None) -> dict:
     """Return the review-safe, user-facing projection of one exact plan."""
     plan_dir = Path(plan_dir)
-    summary = _read_json(plan_dir / "plan_summary.json")
-    mirror_payload = _read_json(plan_dir / "mirror_to_nas.json")
-    delete_payload = _read_json(plan_dir / "move_to_nas_deleted_pool.json")
+    snapshot = read_plan_snapshot(plan_dir)
+    summary = json.loads(snapshot["plan_summary.json"])
+    mirror_payload = json.loads(snapshot["mirror_to_nas.json"])
+    delete_payload = json.loads(snapshot["move_to_nas_deleted_pool.json"])
+    revision = plan_revision(plan_dir, nas_root=nas_root, deleted_root=deleted_root, snapshot=snapshot)
 
     items: list[dict] = []
     for item in mirror_payload.get("items", []):
@@ -56,9 +54,9 @@ def build_plan_details(plan_dir: Path, *, nas_root: Path | None = None, deleted_
 
     return {
         "plan_id": summary["plan_id"],
-        "revision": plan_revision(plan_dir, nas_root=nas_root, deleted_root=deleted_root),
+        "revision": revision,
         "targets": {"photos_root": str(nas_root) if nas_root else None, "quarantine_root": str(deleted_root) if deleted_root else None},
-        "apply_result": read_apply_result(plan_dir),
+        "apply_result": read_apply_result(plan_dir, expected_revision=revision, plan_id=summary["plan_id"]),
         "summary": summary,
         "items": items,
     }

@@ -10,11 +10,6 @@ from typing import Callable
 from .utils import file_state_token, sha256_file
 
 
-def _load_items(path: Path) -> list[dict]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    return list(payload.get("items", []))
-
-
 def _move_to_pool(source: Path, pool_root: Path, relative_path: str) -> Path:
     destination = pool_root / relative_path
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -27,21 +22,28 @@ def execute_apply(
     nas_root: Path,
     deleted_root: Path,
     exporter: Callable[[dict, Path], Path] | object | None = None,
+    plan_snapshot: dict[str, bytes] | None = None,
+    plan_revision_value: str | None = None,
 ) -> dict:
     plan_dir = Path(plan_dir)
     nas_root = Path(nas_root)
     deleted_root = Path(deleted_root)
 
-    summary = json.loads((plan_dir / "plan_summary.json").read_text(encoding="utf-8"))
+    def payload(name: str) -> dict:
+        data = plan_snapshot[name] if plan_snapshot is not None else (plan_dir / name).read_bytes()
+        return json.loads(data)
+
+    summary = payload("plan_summary.json")
     plan_id = summary["plan_id"]
-    delete_items = _load_items(plan_dir / "move_to_nas_deleted_pool.json")
-    mirror_items = _load_items(plan_dir / "mirror_to_nas.json")
+    delete_items = list(payload("move_to_nas_deleted_pool.json").get("items", []))
+    mirror_items = list(payload("mirror_to_nas.json").get("items", []))
 
     deleted_pool_relative_root = f"{date.today().isoformat()}/{plan_id}"
     deleted_pool_root = deleted_root / deleted_pool_relative_root
 
     receipt = {
         "plan_id": plan_id,
+        "plan_revision": plan_revision_value,
         "deleted_pool_relative_root": deleted_pool_relative_root,
         "deleted": {"moved": 0, "bytes": 0, "guard_failed": 0, "missing": 0},
         "mirrored": {"copied": 0, "bytes": 0, "already_present": 0, "guard_failed": 0},

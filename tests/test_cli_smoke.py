@@ -294,7 +294,7 @@ def test_owner_view_and_action_return_one_json_document(tmp_path, capsys, monkey
         calls.append(True)
         print('{"stage":"apply_start"}')
         path = plan_dir / "apply_receipt.json"
-        path.write_text(json.dumps({"plan_id": "cli-plan", "status": "success"}))
+        path.write_text(json.dumps({"plan_id": "cli-plan", "status": "success", "plan_revision": kwargs["expected_plan_revision"]}))
         return path
     monkeypatch.setattr(cli, "run_apply_job", run)
     monkeypatch.setattr(cli, "_preflight_nas", lambda args: {"writable": True})
