@@ -40,6 +40,9 @@ def test_review_apply_reopen_and_retry_keep_same_owner_receipt(tmp_path):
             request_id=action["request_id"], nas_root=nas, deleted_root=deleted, apply_runner=run)
     result = apply()
     assert result["status"] == "success"
+    descriptor = json.loads((Path(__file__).parents[1] / "opl-package.json").read_text())
+    assert result["readback"]["ref"] in {view["data_ref"] for view in descriptor["app_contributions"]["views"]}
+    assert result["readback"]["input"]["plan_dir"] == str(plan_dir)
     assert (nas / "photo.jpg").read_bytes() == source.read_bytes()
     again = apply()
     assert again["replayed"] is True and again["receipt"] == result["receipt"]
@@ -149,6 +152,9 @@ def test_actual_owner_executes_frozen_review_bytes_when_plan_changes_during_pref
     result = apply_reviewed_plan(plan_dir=plan_dir, plan_revision_value=first["revision"], request_id="frozen",
         nas_root=nas, deleted_root=deleted, apply_runner=run, preflight=change_plan)
     assert result["status"] == "success"
+    descriptor = json.loads((Path(__file__).parents[1] / "opl-package.json").read_text())
+    assert result["readback"]["ref"] in {view["data_ref"] for view in descriptor["app_contributions"]["views"]}
+    assert result["readback"]["input"]["plan_dir"] == str(plan_dir)
     assert (nas / "photo.jpg").read_bytes() == source.read_bytes()
     assert not (nas / "unreviewed.jpg").exists()
     assert result["receipt"]["plan_revision"] == first["revision"]

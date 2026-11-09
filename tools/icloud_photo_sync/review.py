@@ -87,7 +87,7 @@ def plan_view(plan_dir: Path, plan: dict) -> dict:
         "actions": [{"action_ref": "photo.steward.v1#plan.apply",
                      "input": {"plan_dir": str(plan_dir), "plan_revision": revision, "request_id": request_id},
                      "label_i18n": {"zh-CN": "执行已审核计划", "en-US": "Apply reviewed plan"}}] if can_apply else [],
-        "readback": {"ref": "photo.steward.v1#plan.exact", "input": {"plan_dir": str(plan_dir)}},
+        "readback": {"ref": "photo.steward.v1#plan", "input": {"plan_dir": str(plan_dir)}},
         "plan": plan,
     }]}}
 
@@ -108,7 +108,7 @@ def apply_reviewed_plan(*, plan_dir: Path, plan_revision_value: str, request_id:
     """Claim one exact plan once; retries return its owner receipt, never reapply."""
     plan_dir = Path(plan_dir)
     base = {"plan_dir": str(plan_dir), "plan_revision": plan_revision_value, "request_id": request_id,
-            "readback": {"ref": "photo.steward.v1#plan.exact", "input": {"plan_dir": str(plan_dir)}}}
+            "readback": {"ref": "photo.steward.v1#plan", "input": {"plan_dir": str(plan_dir)}}}
     if not request_id or len(request_id) > 200:
         return {**base, "status": "rejected", "error": "request_id_invalid"}
     # The claim is stored beside the existing plan/receipt, not in another task store.
