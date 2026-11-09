@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import redirect_stdout
 import json
 import sys
 from pathlib import Path
@@ -27,6 +28,7 @@ from .jobs import (
 from .mounts import MountContractError, inspect_mount
 from .onedrive import run_onedrive_backup
 from .plan_details import build_plan_details
+from .review import apply_reviewed_plan, plan_view, status_view
 from .runtime import run_apply, run_plan
 
 
@@ -115,6 +117,8 @@ def _require_arguments(args: argparse.Namespace) -> None:
         "record-failure": ("status_dir",),
         "latest-plan": ("logs_root",),
         "pending-plan": ("status_dir",),
+        "review-view": ("nas_root", "deleted_root"),
+        "apply-reviewed-plan": ("nas_root", "deleted_root", "state_db", "status_dir", "nas_mount_root", "expected_nas_filesystem"),
         "plan-details": ("nas_root",),
         "plan": (
             "library_path",
@@ -256,6 +260,7 @@ def build_parser() -> argparse.ArgumentParser:
     status_parser.add_argument("--status-dir", type=Path)
     status_parser.add_argument("--scope", choices=("photo", "todo", "all"), default="photo")
     status_parser.add_argument("--format", choices=("json", "markdown"), default="json")
+    status_parser.add_argument("--view", action="store_true")
 
     record_failure_parser = subparsers.add_parser("record-failure")
     record_failure_parser.add_argument("--status-dir", type=Path)
@@ -272,6 +277,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     pending_plan_parser.add_argument("--status-dir", type=Path)
     pending_plan_parser.add_argument("--nas-root", type=Path)
+    pending_plan_parser.add_argument("--deleted-root", type=Path)
+    pending_plan_parser.add_argument("--view", action="store_true")
+    pending_plan_parser.add_argument("--plan-dir", default="", help="reopen this exact plan instead of the pending pointer")
 
     plan_details_parser = subparsers.add_parser(
         "plan-details",
@@ -279,6 +287,24 @@ def build_parser() -> argparse.ArgumentParser:
     )
     plan_details_parser.add_argument("--plan-dir", type=Path, required=True)
     plan_details_parser.add_argument("--nas-root", type=Path)
+    plan_details_parser.add_argument("--deleted-root", type=Path)
+
+    review_view_parser = subparsers.add_parser("review-view", help="read the owner-owned shared review projection")
+    review_view_parser.add_argument("--plan-dir", type=Path, required=True)
+    review_view_parser.add_argument("--nas-root", type=Path)
+    review_view_parser.add_argument("--deleted-root", type=Path)
+
+    apply_reviewed_parser = subparsers.add_parser("apply-reviewed-plan", help="apply one exact reviewed plan")
+    apply_reviewed_parser.add_argument("--plan-dir", type=Path, required=True)
+    apply_reviewed_parser.add_argument("--plan-revision", required=True)
+    apply_reviewed_parser.add_argument("--request-id", required=True)
+    apply_reviewed_parser.add_argument("--contribution", action="store_true", help="return the shared contribution transport envelope")
+    apply_reviewed_parser.add_argument("--nas-root", type=Path)
+    apply_reviewed_parser.add_argument("--deleted-root", type=Path)
+    apply_reviewed_parser.add_argument("--state-db", type=Path)
+    apply_reviewed_parser.add_argument("--status-dir", type=Path)
+    apply_reviewed_parser.add_argument("--swift-source", type=Path, default=DEFAULT_SWIFT_SOURCE)
+    _add_nas_mount_contract(apply_reviewed_parser)
 
     plan_parser = subparsers.add_parser("plan")
     plan_parser.add_argument("--library-path", type=Path)
@@ -409,7 +435,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "status":
         if args.format == "json":
-            print(json.dumps(_load_status_bundle(args.status_dir, args.scope), ensure_ascii=False, indent=2))
+            status = _load_status_bundle(args.status_dir, args.scope)
+            print(json.dumps(status_view(status) if args.view else status, ensure_ascii=False, indent=2))
             return 0
         overview_name = "latest_todo_overview.md" if args.scope == "todo" else "latest_photo_overview.md"
         overview_path = args.status_dir / overview_name
@@ -438,10 +465,13 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "pending-plan":
         try:
-            plan_status = json.loads(
-                (args.status_dir / "latest_plan.json").read_text(encoding="utf-8")
-            )
-            pending = plan_status.get("pending_plan_dir")
+            if args.plan_dir:
+                pending = args.plan_dir
+            else:
+                plan_status = json.loads(
+                    (args.status_dir / "latest_plan.json").read_text(encoding="utf-8")
+                )
+                pending = plan_status.get("pending_plan_dir")
             if not isinstance(pending, str) or not pending:
                 print(json.dumps({
                     "state": "empty",
@@ -449,7 +479,7 @@ def main(argv: list[str] | None = None) -> int:
                     "source_ref": str(args.status_dir),
                 }, ensure_ascii=False, indent=2))
                 return 0
-            payload = build_plan_details(Path(pending), nas_root=args.nas_root)
+            payload = build_plan_details(Path(pending), nas_root=args.nas_root, deleted_root=args.deleted_root)
         except FileNotFoundError:
             print(json.dumps({
                 "state": "empty",
@@ -460,21 +490,58 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, KeyError, json.JSONDecodeError) as exc:
             print(f"cannot read pending plan: {exc}", file=sys.stderr)
             return 1
-        print(json.dumps({
-            "state": "ready",
-            "plan_dir": pending,
-            "plan": payload,
-        }, ensure_ascii=False, indent=2))
+        output = plan_view(Path(pending), payload) if args.view else {
+            "state": "ready", "plan_dir": pending, "plan": payload,
+        }
+        print(json.dumps(output, ensure_ascii=False, indent=2))
         return 0
 
     if args.command == "plan-details":
         try:
-            payload = build_plan_details(args.plan_dir, nas_root=args.nas_root)
+            payload = build_plan_details(args.plan_dir, nas_root=args.nas_root, deleted_root=args.deleted_root)
         except (OSError, KeyError, json.JSONDecodeError) as exc:
             print(f"cannot read plan details: {exc}", file=sys.stderr)
             return 1
         print(json.dumps(payload, ensure_ascii=False, indent=2))
         return 0
+
+    if args.command == "review-view":
+        try:
+            details = build_plan_details(args.plan_dir, nas_root=args.nas_root, deleted_root=args.deleted_root)
+            print(json.dumps(plan_view(args.plan_dir, details), ensure_ascii=False, indent=2))
+        except (OSError, KeyError, json.JSONDecodeError) as exc:
+            print(f"cannot read review view: {exc}", file=sys.stderr)
+            return 1
+        return 0
+
+    if args.command == "apply-reviewed-plan":
+        try:
+            with redirect_stdout(sys.stderr):
+                result = apply_reviewed_plan(
+                    plan_dir=args.plan_dir, plan_revision_value=args.plan_revision, request_id=args.request_id,
+                    nas_root=args.nas_root, deleted_root=args.deleted_root,
+                    preflight=lambda: _preflight_nas(args),
+                    apply_runner=lambda: run_apply_job(
+                        plan_dir=args.plan_dir, nas_root=args.nas_root, deleted_root=args.deleted_root,
+                        state_db=args.state_db, swift_source=args.swift_source, status_dir=args.status_dir,
+                        nas_mount_root=args.nas_mount_root, expected_nas_filesystem=args.expected_nas_filesystem,
+                    ),
+                )
+        except (OSError, ValueError, KeyError) as exc:
+            result = {"status": "rejected", "error": type(exc).__name__, "plan_dir": str(args.plan_dir)}
+        ok = result.get("status") == "success"
+        if args.contribution:
+            output = {"schema_version": "opl-package-app-contribution-response.v1",
+                      "ok": ok, "operation": "execute", "ref": "photo.steward.v1#plan.apply",
+                      "result": result}
+            if not ok:
+                output["error"] = {"code": result.get("error", result.get("status", "apply_failed")),
+                                   "message": "Inspect this exact plan and its receipt before another action.",
+                                   "details": result}
+            print(json.dumps(output, ensure_ascii=False, indent=2))
+            return 0
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if ok else 1
 
     if args.command == "plan":
         if _preflight_or_report(args) is None:

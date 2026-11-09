@@ -50,8 +50,9 @@ If either fails, explain the exact failure and do not generate or apply a plan.
    any quarantine effect in plain language.
 4. Require explicit approval for that exact plan directory. Never infer it from
    a general request or a prior conversation.
-5. Execute only `photo-steward apply-job --plan-dir <exact-plan-dir>`.
-6. Read `apply_receipt.json` and fresh JSON status. Completion requires
+5. For Agent/UI handoff, read `photo-steward pending-plan --view` (or add `--plan-dir <exact-plan-dir>` to reopen). Keep its bound `plan_dir`, `plan_revision`, and `request_id`; execute `photo-steward apply-reviewed-plan --plan-dir <exact-plan-dir> --plan-revision <reviewed-revision> --request-id <request-id>`. Existing native/manual `apply-job --plan-dir <exact-plan-dir>` remains available.
+6. Read the same exact plan after execution. A repeated reviewed request returns its original operation/receipt. For `partial` or `outcome_unknown`, inspect the receipt and actual targets, then generate and review a new remaining-work plan; never retry apply blindly.
+7. Read `apply_receipt.json` and fresh JSON status. Completion requires
    `status=success`, zero guard failures, and target-side readback.
 
 ## Review rules

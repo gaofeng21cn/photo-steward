@@ -4,31 +4,108 @@
     "photo.steward.v1#status": {
       "kind": "command",
       "cwd": "package",
-      "argv": ["photo-steward", "status", "--scope", "photo", "--format", "json"],
-      "transform": "photo_status"
+      "argv": [
+        "photo-steward",
+        "status",
+        "--scope",
+        "photo",
+        "--format",
+        "json",
+        "--view"
+      ]
     },
     "photo.steward.v1#preflight": {
       "kind": "command",
       "cwd": "package",
-      "argv": ["photo-steward", "preflight"]
+      "argv": [
+        "photo-steward",
+        "preflight"
+      ]
     },
     "photo.steward.v1#plan": {
       "kind": "command",
       "cwd": "package",
-      "argv": ["photo-steward", "pending-plan"],
-      "transform": "photo_pending_plan"
+      "argv": [
+        "photo-steward",
+        "pending-plan",
+        "--view",
+        "--plan-dir",
+        "${input.plan_dir}"
+      ],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "plan_dir": {
+            "type": "string",
+            "default": "",
+            "title": "Exact plan directory (optional)"
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "photo.steward.v1#plan.exact": {
       "kind": "command",
       "cwd": "package",
-      "argv": ["photo-steward", "plan-details", "--plan-dir", "${input.plan_dir}"]
+      "argv": [
+        "photo-steward",
+        "review-view",
+        "--plan-dir",
+        "${input.plan_dir}"
+      ],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "plan_dir": {
+            "type": "string",
+            "title": "Plan directory"
+          }
+        },
+        "required": [
+          "plan_dir"
+        ],
+        "additionalProperties": false
+      }
     }
   },
   "actions": {
     "photo.steward.v1#plan.apply": {
       "kind": "command",
       "cwd": "package",
-      "argv": ["photo-steward", "apply-job", "--plan-dir", "${input.plan_dir}"]
+      "argv": [
+        "photo-steward",
+        "apply-reviewed-plan",
+        "--plan-dir",
+        "${input.plan_dir}",
+        "--plan-revision",
+        "${input.plan_revision}",
+        "--request-id",
+        "${input.request_id}",
+        "--contribution"
+      ],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "plan_dir": {
+            "type": "string",
+            "readOnly": true
+          },
+          "plan_revision": {
+            "type": "string",
+            "readOnly": true
+          },
+          "request_id": {
+            "type": "string",
+            "readOnly": true
+          }
+        },
+        "required": [
+          "plan_dir",
+          "plan_revision",
+          "request_id"
+        ],
+        "additionalProperties": false
+      }
     }
   }
 }

@@ -3,12 +3,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from .review import plan_revision, read_apply_result
+
 
 def _read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def build_plan_details(plan_dir: Path, *, nas_root: Path | None = None) -> dict:
+def build_plan_details(plan_dir: Path, *, nas_root: Path | None = None, deleted_root: Path | None = None) -> dict:
     """Return the review-safe, user-facing projection of one exact plan."""
     plan_dir = Path(plan_dir)
     summary = _read_json(plan_dir / "plan_summary.json")
@@ -54,6 +56,9 @@ def build_plan_details(plan_dir: Path, *, nas_root: Path | None = None) -> dict:
 
     return {
         "plan_id": summary["plan_id"],
+        "revision": plan_revision(plan_dir, nas_root=nas_root, deleted_root=deleted_root),
+        "targets": {"photos_root": str(nas_root) if nas_root else None, "quarantine_root": str(deleted_root) if deleted_root else None},
+        "apply_result": read_apply_result(plan_dir),
         "summary": summary,
         "items": items,
     }

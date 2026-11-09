@@ -275,3 +275,56 @@ def test_receipt_result_returns_nonzero_for_partial(tmp_path, capsys) -> None:
 
     assert cli._print_receipt_result(receipt_path) == 1
     assert str(receipt_path) in capsys.readouterr().out
+
+
+def test_owner_view_and_action_return_one_json_document(tmp_path, capsys, monkeypatch) -> None:
+    from tools.icloud_photo_sync.review import read_apply_result
+    config_path = tmp_path / "config.toml"
+    _write_config(config_path, tmp_path)
+    plan_dir = tmp_path / "plan"
+    plan_dir.mkdir()
+    (plan_dir / "plan_summary.json").write_text(json.dumps({"plan_id": "cli-plan", "mirror_count": 0, "delete_count": 0, "unresolved_count": 0}))
+    (plan_dir / "mirror_to_nas.json").write_text('{"items":[]}')
+    (plan_dir / "move_to_nas_deleted_pool.json").write_text('{"items":[]}')
+    assert cli.main(["--config", str(config_path), "pending-plan", "--view", "--plan-dir", str(plan_dir)]) == 0
+    view = json.loads(capsys.readouterr().out)
+    action = view["data"]["items"][0]["actions"][0]["input"]
+    calls = []
+    def run(**kwargs):
+        calls.append(True)
+        print('{"stage":"apply_start"}')
+        path = plan_dir / "apply_receipt.json"
+        path.write_text(json.dumps({"plan_id": "cli-plan", "status": "success"}))
+        return path
+    monkeypatch.setattr(cli, "run_apply_job", run)
+    monkeypatch.setattr(cli, "_preflight_nas", lambda args: {"writable": True})
+    args = ["--config", str(config_path), "apply-reviewed-plan", "--plan-dir", str(plan_dir),
+            "--plan-revision", action["plan_revision"], "--request-id", action["request_id"], "--contribution"]
+    assert cli.main(args) == 0
+    output = capsys.readouterr()
+    result = json.loads(output.out)
+    assert result["ok"] is True and result["result"]["receipt"]["plan_id"] == "cli-plan"
+    assert "apply_start" in output.err
+    assert cli.main(args) == 0
+    assert json.loads(capsys.readouterr().out)["result"]["replayed"] is True
+    assert len(calls) == 1 and read_apply_result(plan_dir)["outcome"] == "success"
+    # Exact reopening remains available after the pending pointer is cleared.
+    assert cli.main(["--config", str(config_path), "pending-plan", "--view", "--plan-dir", str(plan_dir)]) == 0
+    reopened = json.loads(capsys.readouterr().out)["data"]["items"][0]
+    assert reopened["status"] == "success" and reopened["actions"] == []
+
+
+def test_owner_rejects_stale_revision_with_structured_contribution_error(tmp_path, capsys, monkeypatch) -> None:
+    config_path = tmp_path / "config.toml"
+    _write_config(config_path, tmp_path)
+    plan_dir = tmp_path / "plan"
+    plan_dir.mkdir()
+    def never(**kwargs):
+        raise AssertionError("stale request must not call apply")
+    monkeypatch.setattr(cli, "run_apply_job", never)
+    args = ["--config", str(config_path), "apply-reviewed-plan", "--plan-dir", str(plan_dir),
+            "--plan-revision", "sha256:stale", "--request-id", "stale", "--contribution"]
+    assert cli.main(args) == 0
+    output = json.loads(capsys.readouterr().out)
+    assert output["ok"] is False and output["error"]["code"] == "plan_revision_conflict"
+    assert not (plan_dir / "review_apply_operation.json").exists()

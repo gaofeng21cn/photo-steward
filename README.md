@@ -184,6 +184,35 @@ entry points. See [`docs/automation.md`](./docs/automation.md).
 Manual wrappers and the App call the same CLI. See
 [`docs/architecture.md`](./docs/architecture.md).
 
+## Agent and shared review UI
+
+The Package contribution reads owner-shaped JSON from `status --view` and
+`pending-plan --view`. Pass `--plan-dir <directory>` to the latter to reopen
+one exact plan after its pending pointer is cleared. `review-view --plan-dir`
+returns the same projection; `plan-details --plan-dir` exposes its machine data.
+The revision binds plan bytes and configured mirror/quarantine targets. Views
+include the original operation and apply receipt rather than inferring success
+from a closed dialog.
+
+Shared actions call `apply-reviewed-plan --plan-dir <directory>
+--plan-revision <revision> --request-id <request-id>`, which invokes the existing
+`run_apply_job` owner. Its JSON response separates `success`, `partial`,
+`rejected`, and `outcome_unknown`; progress goes to stderr. The contribution
+adapter uses `--contribution` to return the standard OPL response envelope.
+Plan directory, revision, and request identity are bound read-only form inputs.
+Changed plan/target revisions are rejected before execution; existing file
+state and content guards still run during apply. Repeated calls and reopening
+read the original operation/receipt, including a lost or interrupted response.
+For partial or unknown outcomes, inspect the receipt and actual targets, then
+create and review a fresh remaining-work plan; reopening never repeats apply.
+These commands also work without a graphical host.
+
+The native App and existing CLI commands remain the same sync owner. This
+source change does not update an already installed native runtime; a carrier
+using the new descriptor requires the matching CLI. Synthetic tests cover the
+owner handoff and local-file mutation. Real Photos/NAS permissions, native App
+installation, and cross-host UI acceptance are separate validation surfaces.
+
 ## Current Release
 
 Version `0.4.6` is the current integrated macOS release. Its universal App
