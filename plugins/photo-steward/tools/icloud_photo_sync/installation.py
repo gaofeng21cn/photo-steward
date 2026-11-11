@@ -544,9 +544,9 @@ def _download_and_install(args: argparse.Namespace, home: Path, codex_home: Path
                 if not parts or parts[0] not in {APP_NAME, "__MACOSX"} or ".." in parts or Path(entry.filename).is_absolute():
                     raise InstallationError("release_archive_path_invalid")
                 if stat.S_ISLNK(entry.external_attr >> 16):
-                    target = package.read(entry).decode()
-                    resolved = posixpath.normpath(posixpath.join(posixpath.dirname(entry.filename), target))
-                    if target.startswith("/") or not resolved.startswith(APP_NAME + "/"):
+                    link_target = package.read(entry).decode()
+                    resolved = posixpath.normpath(posixpath.join(posixpath.dirname(entry.filename), link_target))
+                    if link_target.startswith("/") or not resolved.startswith(APP_NAME + "/"):
                         raise InstallationError("release_archive_link_invalid")
         # ditto preserves the signed macOS framework's symlinks and resource metadata.
         subprocess.run(["/usr/bin/ditto", "-x", "-k", str(archive), str(root / "extracted")], check=True, capture_output=True)

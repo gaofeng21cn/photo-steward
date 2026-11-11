@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 import plistlib
+import subprocess
 
 import pytest
 
@@ -188,3 +189,21 @@ def test_native_package_and_python_versions_match():
     info = plistlib.loads((root / "app/PhotoCenterMenuBar/Info.plist").read_bytes())
     assert project["project"]["version"] == info["CFBundleShortVersionString"] == manifest["version"]
     assert manifest["presentation"]["software_type"] == "application"
+
+
+def test_download_archive_with_framework_symlink_keeps_exact_install_target(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    app = bundle_at(tmp_path / "distribution" / owner.APP_NAME)
+    framework = app / owner.RUNTIME_RELATIVE / "Python.framework"
+    (framework / "Versions/3.13").mkdir(parents=True)
+    (framework / "Versions/Current").symlink_to("3.13")
+    archive = tmp_path / "release.zip"
+    subprocess.run(["/usr/bin/ditto", "-c", "-k", "--keepParent", str(app), str(archive)], check=True)
+    monkeypatch.setattr(owner, "read_release", lambda version: {"version": version, "artifact_url": "https://example.invalid/release.zip", "sha256": owner._digest(archive.read_bytes())})
+    monkeypatch.setattr(owner, "urlopen", lambda *args, **kwargs: archive.open("rb"))
+    monkeypatch.setattr(owner, "_verify_bundle", lambda *args: None)
+    snapshot = call(home, "install", "--version", "0.4.8")
+    installed = selected(snapshot, "macos_app")
+    assert installed["location"] == str(home / "Applications" / owner.APP_NAME)
+    assert installed["active"] is True
+    assert (Path(installed["location"]) / owner.RUNTIME_RELATIVE / "Python.framework/Versions/Current").is_symlink()
