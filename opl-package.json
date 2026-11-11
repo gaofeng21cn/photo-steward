@@ -168,7 +168,7 @@
       "skills/photo-steward/agents/openai.yaml",
       "tools/icloud_photo_sync/installation.py"
     ],
-    "digest": "sha256:395741497157240df82a67de51bdbf50f88a00f8476c4caa99e747a70172e8d7"
+    "digest": "sha256:fdd8870cec1dfda24529e520252f3a56ca23deae28dca5d1cbf30fe23d558135"
   },
   "presentation": {
     "display_name_i18n": {

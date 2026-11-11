@@ -456,7 +456,7 @@ def _install(bundle: Path, target: Path, version: str, *, home: Path, codex_home
 
 
 def configure_parser(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--home", type=Path, default=Path.home(), help="Installation owner home; use an isolated directory for verification")
+    parser.add_argument("--home", type=Path, default=Path(os.environ.get("PHOTO_STEWARD_INSTALLATION_HOME") or str(Path.home())), help="Installation owner home; use an isolated directory for verification")
     parser.add_argument("--codex-home", type=Path, default=None)
     commands = parser.add_subparsers(dest="installation_action", required=True)
     for action in ["inspect", "activate", "unlink", "uninstall", "install", "update", "install-bundle", "link", "prepare"]:
