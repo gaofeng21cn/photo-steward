@@ -26,6 +26,8 @@ def _write_json(path: Path, value: object) -> None:
 def materialize(*, check: bool = False) -> bool:
     root_manifest = json.loads((ROOT / "opl-package.json").read_text())
     carrier_manifest_path = CARRIER / "opl-package.json"
+    copied = ["app-contribution-adapter.json", "scripts/manage_installation.py", "tools/icloud_photo_sync/installation.py"]
+    copied.extend(str(path.relative_to(ROOT)) for path in (ROOT / "skills/photo-steward").rglob("*") if path.is_file() and "__pycache__" not in path.parts)
     if not check:
         shutil.copyfile(ROOT / "app-contribution-adapter.json", CARRIER / "app-contribution-adapter.json")
         shutil.copytree(
@@ -33,6 +35,10 @@ def materialize(*, check: bool = False) -> bool:
             CARRIER / "skills/photo-steward",
             dirs_exist_ok=True,
         )
+        for relative in ["scripts/manage_installation.py", "tools/icloud_photo_sync/installation.py"]:
+            destination = CARRIER / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / relative, destination)
     paths = sorted(
         str(path.relative_to(CARRIER))
         for path in CARRIER.rglob("*")
@@ -41,18 +47,18 @@ def materialize(*, check: bool = False) -> bool:
         and path.name != "opl-package.json"
     )
     lock = content_lock(CARRIER, paths)
-    root_manifest["content_lock"] = lock
     carrier_manifest = (
         json.loads(carrier_manifest_path.read_text())
         if carrier_manifest_path.is_file()
         else {}
     )
-    carrier_manifest["content_lock"] = lock
     if check:
         return (
             root_manifest.get("content_lock") == lock
             and carrier_manifest == root_manifest
+            and all((CARRIER / relative).is_file() and (CARRIER / relative).read_bytes() == (ROOT / relative).read_bytes() for relative in copied)
         )
+    root_manifest["content_lock"] = lock
     _write_json(carrier_manifest_path, root_manifest)
     _write_json(ROOT / "opl-package.json", root_manifest)
     return True

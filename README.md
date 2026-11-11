@@ -175,6 +175,12 @@ Review the complete plan and explicitly apply its exact directory. The NAS
 worker, OneDrive backup, and quarantine-retention audit also remain manual
 entry points. See [`docs/automation.md`](./docs/automation.md).
 
+## Software management
+
+Photo Steward is one OPL MiniApp with desktop, CLI, Skill, and shared MCP review entry points. The software center manages the product; a Codex plugin is an integration entry point, not another photo application. Release and development installations can coexist, with one explicitly selected runtime for desktop, Agent, and CLI use.
+
+`photo-steward installation inspect --json` reads versions, actual paths, activation, and supported operations without accessing Photos, NAS, or private configuration. Release updates use exact signed, notarized GitHub artifacts. Development connections can be activated or unlinked; updating software never edits a checkout. Uninstalling keeps photos, configuration, plans, and receipts. See [installation management](docs/installation-management.md).
+
 ## Architecture
 
 - **CLI:** the testable command contract and only owner of sync semantics.
@@ -217,7 +223,7 @@ installation, and cross-host UI acceptance are separate validation surfaces.
 
 ## Current Release
 
-Version `0.4.6` is the current integrated macOS release. Its universal App
+The latest published macOS release is identified by its GitHub release asset and bundle version. Its universal App
 contains the CLI runtime, prebuilt Photos bridge, Codex Skill, first-run setup,
 in-app NAS configuration, and reviewable photo plans. The public archive is
 signed with Apple Developer ID, notarized, stapled, and accepted by Gatekeeper.

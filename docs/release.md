@@ -1,7 +1,7 @@
 # Release
 
 This document separates a public source release from a notarized macOS App
-release. Photo Steward `v0.4.6` is the current integrated-installer App release.
+release. The published App version is read from the exact GitHub release asset and its bundle, independently of a source checkout.
 
 ## Local Validation
 
@@ -24,6 +24,13 @@ The release packager builds arm64 and x86_64 binaries, combines them into one
 universal app, stages a universal Python framework, compiles the Photos bridge
 for both architectures, includes the CLI and Codex Skill, and signs the app
 with Developer ID and the hardened runtime:
+
+The bundled Python is pinned in `config/python-runtime.json`. The build verifies
+the official python.org installer's SHA-256, Python Software Foundation
+Developer ID and Apple notarization, extracts it into the build directory, and
+relocates its framework dependencies. It never runs the system installer. Both
+architectures and the bundled CLI are verified before signing; a missing or
+broken embedded runtime cannot silently use a system Python installation.
 
 ```bash
 scripts/package_release.sh

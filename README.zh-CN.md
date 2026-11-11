@@ -186,3 +186,9 @@ Package 的状态和计划视图由 Photo CLI 直接输出：`status --view`、`
 共享执行调用 `apply-reviewed-plan`，绑定 `plan_dir`、`plan_revision`、`request_id`，仍由原 `run_apply_job` 执行并保留原文件状态/内容守卫。Agent 与 UI 都可回读同一 operation/receipt；旧计划或目标变化在执行前拒绝，领域执行始终消费同一份已校验计划字节；旧目标/版本的回执显示冲突，不能冒充当前成功。重复请求不重复执行。部分完成或结果未知时先检查原回执和目标，再生成并审核剩余工作的新计划。没有 UI 也可直接使用这些 JSON 命令。
 
 新 descriptor 需要匹配版本 CLI；本次源码改动不替换已安装 App。合成测试验证领域交接与本地文件操作，真实 Photos/NAS 权限、安装及跨宿主 UI 分别验收。
+
+## OPL 软件中心
+
+Photo Steward 是一个 OPL MiniApp，桌面、CLI、Skill 和共享 MCP 审阅界面属于同一产品。正式安装与开发源码可以并存；软件中心选定唯一激活实例后，桌面、Agent 和 CLI 共用其运行时。
+
+`photo-steward installation inspect --json` 无需照片配置即可回读真实版本、路径、激活状态及可用操作。正式版使用精确签名、公证发行包更新；开发源码只显式接入、切换或解绑。卸载保留照片、配置、计划与回执。详见[安装管理](docs/installation-management.md)。

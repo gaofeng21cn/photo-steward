@@ -3,7 +3,7 @@
   "package_id": "photo-steward",
   "display_name": "Photo Steward",
   "publisher": "gaofeng21cn",
-  "version": "0.4.7",
+  "version": "0.4.8",
   "source": "first_party",
   "source_repo": "https://github.com/gaofeng21cn/photo-steward.git",
   "package_role": "capability_package",
@@ -24,7 +24,46 @@
     "optional_skills_installed_by_default": true,
     "default_materialization_policy": "all_exported_skills"
   },
-  "entrypoints": [],
+  "entrypoints": [
+    {
+      "entrypoint_id": "photo-steward.installation",
+      "entrypoint_kind": "opl_software_installation_cli",
+      "source_ref": "scripts/manage_installation.py",
+      "runtime": "python3",
+      "protocol": "opl_software_installation.v1",
+      "discovery": {
+        "kind": "macos_bundle",
+        "bundle_id": "com.photosteward.photo-center",
+        "bundle_names": [
+          "Photo Steward.app"
+        ],
+        "executable": "PhotoCenterMenuBar",
+        "runtime_relative_path": "Contents/Resources/PhotoStewardRuntime",
+        "cli_names": [
+          "photo-steward",
+          "icloud-photo-sync"
+        ],
+        "runtime_current": "Library/Application Support/Photo Steward/runtime/current",
+        "development_manifest": "pyproject.toml"
+      },
+      "kind": "opl_software_installation_cli",
+      "release_target": {
+        "version": "0.4.8",
+        "channel": "stable",
+        "tag": "v0.4.8",
+        "asset": "Photo-Steward-0.4.8-macOS-universal.zip"
+      },
+      "operations": [
+        "inspect",
+        "install",
+        "activate",
+        "update",
+        "uninstall",
+        "link",
+        "unlink"
+      ]
+    }
+  ],
   "codex_surface": {
     "plugin_id": "photo-steward",
     "plugin_source_path": ".",
@@ -133,9 +172,22 @@
       ".codex-plugin/plugin.json",
       "app-contribution-adapter.json",
       "plugin.json",
+      "scripts/manage_installation.py",
       "skills/photo-steward/SKILL.md",
-      "skills/photo-steward/agents/openai.yaml"
+      "skills/photo-steward/agents/openai.yaml",
+      "tools/icloud_photo_sync/installation.py"
     ],
-    "digest": "sha256:ddf3205f82f76e05c9956491698946772a59c3fd45f467ddb1fa78f0bfe1f501"
+    "digest": "sha256:7d6ae40b8753093f5336813ee9f07939befab6fc987733b1bebd340fa110b6a2"
+  },
+  "presentation": {
+    "display_name_i18n": {
+      "zh-CN": "Photo Steward",
+      "en-US": "Photo Steward"
+    },
+    "description_i18n": {
+      "zh-CN": "以 iCloud Photos 为主源，规划、审阅并执行照片镜像；Agent 与桌面共用同一运行时。",
+      "en-US": "Plan, review, and apply photo mirrors from iCloud Photos through one shared Agent and desktop runtime."
+    },
+    "software_type": "application"
   }
 }

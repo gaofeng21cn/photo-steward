@@ -31,15 +31,15 @@ fi
 resolve_python() {
   local candidate
   local -a candidates
-  if [[ -n "${PYTHON_BIN:-}" ]]; then
-    candidates+=("$PYTHON_BIN")
+  if [[ -n "${PHOTO_STEWARD_RUNTIME_ROOT:-}" ]]; then
+    # A published App must use its bundled runtime or fail; system Python is not its fallback.
+    candidates+=("$PHOTO_STEWARD_RUNTIME_ROOT/bin/python3")
+  else
+    if [[ -n "${PYTHON_BIN:-}" ]]; then
+      candidates+=("$PYTHON_BIN")
+    fi
+    candidates+=("/opt/homebrew/bin/python3" "/usr/local/bin/python3" "$HOME/.py-global/bin/python3")
   fi
-  candidates+=(
-    "${PHOTO_STEWARD_RUNTIME_ROOT:-}/bin/python3"
-    "/opt/homebrew/bin/python3"
-    "/usr/local/bin/python3"
-    "$HOME/.py-global/bin/python3"
-  )
 
   for candidate in "${candidates[@]}"; do
     if [[ -x "$candidate" ]] && "$candidate" -c \
@@ -48,7 +48,7 @@ resolve_python() {
       PYTHON_BIN="$candidate"
       export PYTHON_BIN
       if [[ -n "${PHOTO_STEWARD_RUNTIME_ROOT:-}" ]]; then
-        export PYTHONPATH="$PHOTO_STEWARD_RUNTIME_ROOT/vendor:$PHOTO_STEWARD_RUNTIME_ROOT${PYTHONPATH:+:$PYTHONPATH}"
+        export PYTHONPATH="$PHOTO_STEWARD_RUNTIME_ROOT"
         export PHOTO_STEWARD_PHOTOS_BRIDGE="$PHOTO_STEWARD_RUNTIME_ROOT/bin/PhotoStewardPhotosBridge.app/Contents/MacOS/photos_bridge"
       fi
       return 0

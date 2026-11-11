@@ -19,77 +19,30 @@ struct PhotoStewardRuntimeInstaller {
             throw RuntimeInstallerError.missingBundleRuntime
         }
 
-        let version = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "development"
-        let runtimeBase = fileManager.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/Photo Steward/runtime", isDirectory: true)
-        let destination = runtimeBase.appendingPathComponent(version, isDirectory: true)
-        try fileManager.createDirectory(at: runtimeBase, withIntermediateDirectories: true)
-
-        let marker = destination.appendingPathComponent(".installed")
-        let bundledManifest = bundledRuntime.appendingPathComponent(".runtime-manifest")
-        let installedManifest = destination.appendingPathComponent(".runtime-manifest")
-        let bundleDigest = try String(contentsOf: bundledManifest, encoding: .utf8)
-        let installedDigest = try? String(contentsOf: installedManifest, encoding: .utf8)
-        if installedDigest != bundleDigest || !fileManager.fileExists(atPath: marker.path) {
-            if fileManager.fileExists(atPath: destination.path) {
-                try fileManager.removeItem(at: destination)
-            }
-            try fileManager.copyItem(at: bundledRuntime, to: destination)
-            try Data("Photo Steward \(version)\n".utf8).write(to: marker, options: .atomic)
+        let process = Process()
+        process.executableURL = bundledRuntime.appendingPathComponent("bin/python3")
+        process.arguments = [
+            bundledRuntime.appendingPathComponent("scripts/manage_installation.py").path,
+            "prepare", "--app-path", Bundle.main.bundleURL.path, "--json",
+        ]
+        process.currentDirectoryURL = bundledRuntime
+        let output = Pipe()
+        let errorOutput = Pipe()
+        process.standardOutput = output
+        process.standardError = errorOutput
+        try process.run()
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            let detail = String(data: data, encoding: .utf8) ?? "无法选择 Photo Steward 运行环境"
+            throw RuntimeInstallerError.commandFailed(detail)
         }
-
-        let current = runtimeBase.appendingPathComponent("current", isDirectory: true)
-        if fileManager.fileExists(atPath: current.path)
-            || (try? fileManager.destinationOfSymbolicLink(atPath: current.path)) != nil {
-            try fileManager.removeItem(at: current)
+        let result = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        guard result?["active_installation_status"] as? String == "active" else {
+            throw RuntimeInstallerError.commandFailed("请在 OPL 软件中心选择一个激活的 Photo Steward 安装。")
         }
-        try fileManager.createSymbolicLink(at: current, withDestinationURL: destination)
-
-        try installCommandWrappers()
-        try installSkills(runtimeRoot: destination)
-        return current
-    }
-
-    private func installCommandWrappers() throws {
-        let binDirectory = fileManager.homeDirectoryForCurrentUser.appendingPathComponent(".local/bin", isDirectory: true)
-        try fileManager.createDirectory(at: binDirectory, withIntermediateDirectories: true)
-        let wrapper = """
-        #!/bin/zsh
-        set -euo pipefail
-        RUNTIME_ROOT="$HOME/Library/Application Support/Photo Steward/runtime/current"
-        exec "$RUNTIME_ROOT/scripts/icloud-photo-sync" "$@"
-        """
-        for name in ["photo-steward", "icloud-photo-sync"] {
-            try writeExecutable(Data(wrapper.utf8), to: binDirectory.appendingPathComponent(name))
-        }
-    }
-
-    private func installSkills(runtimeRoot: URL) throws {
-        let codexRoot = ProcessInfo.processInfo.environment["CODEX_HOME"]
-            .map(URL.init(fileURLWithPath:))
-            ?? fileManager.homeDirectoryForCurrentUser.appendingPathComponent(".codex", isDirectory: true)
-        let skillsDirectory = codexRoot.appendingPathComponent("skills", isDirectory: true)
-        try fileManager.createDirectory(at: skillsDirectory, withIntermediateDirectories: true)
-
-        for name in ["photo-steward"] {
-            let source = runtimeRoot.appendingPathComponent("skills/\(name)", isDirectory: true)
-            let destination = skillsDirectory.appendingPathComponent(name, isDirectory: true)
-            try removeIfPresent(destination)
-            try fileManager.copyItem(at: source, to: destination)
-        }
-    }
-
-    private func writeExecutable(_ data: Data, to url: URL) throws {
-        try removeIfPresent(url)
-        try data.write(to: url, options: .atomic)
-        try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
-    }
-
-    private func removeIfPresent(_ url: URL) throws {
-        if fileManager.fileExists(atPath: url.path)
-            || (try? fileManager.destinationOfSymbolicLink(atPath: url.path)) != nil {
-            try fileManager.removeItem(at: url)
-        }
+        return fileManager.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Photo Steward/runtime/current", isDirectory: true)
     }
 }
 

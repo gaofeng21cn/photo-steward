@@ -1,0 +1,8 @@
+{
+  "version": "3.13.14",
+  "framework_version": "3.13",
+  "url": "https://www.python.org/ftp/python/3.13.14/python-3.13.14-macos11.pkg",
+  "sha256": "8e58affb218c155a1dfdc27b291f817129669f8760e7a297adb2e4439ba5d2e8",
+  "installer_identity": "Developer ID Installer: Python Software Foundation (BMM5U3QVKW)",
+  "architectures": ["arm64", "x86_64"]
+}

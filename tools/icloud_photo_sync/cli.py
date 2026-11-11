@@ -30,6 +30,7 @@ from .onedrive import run_onedrive_backup
 from .plan_details import build_plan_details
 from .review import apply_reviewed_plan, plan_view, status_view
 from .runtime import run_apply, run_plan
+from . import installation
 
 
 DEFAULT_SWIFT_SOURCE = Path(__file__).with_name("photos_bridge.swift")
@@ -238,6 +239,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    installation.configure_parser(subparsers.add_parser("installation", help="inspect and manage software installations without reading photo data"))
+
     config_parser = subparsers.add_parser("config", help="create, validate, or locate the private configuration")
     config_subparsers = config_parser.add_subparsers(dest="config_action", required=True)
     config_subparsers.add_parser("path")
@@ -410,6 +413,14 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "installation":
+        try:
+            print(json.dumps(installation.execute(args), ensure_ascii=False, indent=2))
+            return 0
+        except (OSError, ValueError) as exc:
+            print(json.dumps({"status": "rejected", "reason": str(exc)}))
+            return 2
 
     if args.command == "config":
         try:
