@@ -5,11 +5,8 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BIN_DIR="${HOME}/.local/bin"
 SKILL_ROOT="${CODEX_HOME:-${HOME}/.codex}/skills"
 
-mkdir -p "$BIN_DIR" "$SKILL_ROOT"
 chmod +x "$ROOT_DIR/scripts/icloud-photo-sync"
-ln -sfn "$ROOT_DIR/scripts/icloud-photo-sync" "$BIN_DIR/photo-steward"
-ln -sfn "$ROOT_DIR/scripts/icloud-photo-sync" "$BIN_DIR/icloud-photo-sync"
-ln -sfn "$ROOT_DIR/skills/photo-steward" "$SKILL_ROOT/photo-steward"
+python3 "$ROOT_DIR/scripts/manage_installation.py" link --source "$ROOT_DIR" --json >/dev/null
 
 CONFIG_PATH="$("$BIN_DIR/photo-steward" config path)"
 if [[ ! -e "$CONFIG_PATH" ]]; then

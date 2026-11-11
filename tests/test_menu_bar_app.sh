@@ -52,7 +52,7 @@ rg -Fq 'PHImageManager.default().cancelImageRequest' "$SOURCE_DIR/Views/PlanRevi
 rg -Fq '预览读取超时' "$SOURCE_DIR/Views/PlanReviewView.swift"
 ! rg -Fq 'if self.requestedMaxPixelSize > self.loadedMaxPixelSize' "$SOURCE_DIR/Views/PlanReviewView.swift"
 rg -Fq '在 Finder 中查看' "$SOURCE_DIR/Views/PlanReviewView.swift"
-rg -Fq '未找到 NAS 挂载点' "$SOURCE_DIR/Services/PhotoCenterStore.swift"
+rg -Fq '未找到已配置的 NAS 挂载点' "$SOURCE_DIR/Services/PhotoCenterStore.swift"
 rg -Fq 'nas mount unavailable' "$SOURCE_DIR/Services/PhotoCenterStore.swift"
 
 print "menu_bar_app: static console UX contract and plist valid"

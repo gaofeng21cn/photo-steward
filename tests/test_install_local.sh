@@ -7,12 +7,11 @@ trap 'rm -rf "$TMP_HOME"' EXIT
 
 HOME="$TMP_HOME" CODEX_HOME="$TMP_HOME/.codex" "$ROOT_DIR/scripts/install_local.sh" >/dev/null
 
-[[ -L "$TMP_HOME/.local/bin/photo-steward" ]]
-[[ "$(readlink "$TMP_HOME/.local/bin/photo-steward")" == "$ROOT_DIR/scripts/icloud-photo-sync" ]]
-[[ -L "$TMP_HOME/.local/bin/icloud-photo-sync" ]]
-[[ "$(readlink "$TMP_HOME/.local/bin/icloud-photo-sync")" == "$ROOT_DIR/scripts/icloud-photo-sync" ]]
+[[ -x "$TMP_HOME/.local/bin/photo-steward" ]]
+[[ -x "$TMP_HOME/.local/bin/icloud-photo-sync" ]]
+[[ "$(readlink "$TMP_HOME/Library/Application Support/Photo Steward/runtime/current")" == "$ROOT_DIR" ]]
 [[ -L "$TMP_HOME/.codex/skills/photo-steward" ]]
-[[ "$(readlink "$TMP_HOME/.codex/skills/photo-steward")" == "$ROOT_DIR/skills/photo-steward" ]]
+[[ "$(readlink "$TMP_HOME/.codex/skills/photo-steward")" == "$TMP_HOME/Library/Application Support/Photo Steward/runtime/current/skills/photo-steward" ]]
 [[ ! -e "$TMP_HOME/.codex/skills/icloud-photo-center" ]]
 
 CONFIG_PATH="$TMP_HOME/Library/Application Support/Photo Steward/config.toml"
