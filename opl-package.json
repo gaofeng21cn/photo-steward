@@ -52,7 +52,16 @@
         "channel": "stable",
         "tag": "v0.4.8",
         "asset": "Photo-Steward-0.4.8-macOS-universal.zip"
-      }
+      },
+      "operations": [
+        "inspect",
+        "install",
+        "activate",
+        "update",
+        "uninstall",
+        "link",
+        "unlink"
+      ]
     }
   ],
   "codex_surface": {

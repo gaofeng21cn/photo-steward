@@ -13,14 +13,14 @@ if [[ "$SIGNING_IDENTITY" != "-" ]]; then
   timestamp_args=(--timestamp)
 fi
 
-while IFS= read -r path; do
-  [[ -e "$path" ]] || { echo "runtime code is missing: $path" >&2; exit 1; }
+while IFS= read -r runtime_file; do
+  [[ -e "$runtime_file" ]] || { echo "runtime code is missing: $runtime_file" >&2; exit 1; }
   /usr/bin/codesign \
     --force \
     --options runtime \
     "${timestamp_args[@]}" \
     --sign "$SIGNING_IDENTITY" \
-    "$path"
+    "$runtime_file"
 done < <(python3 - "$RUNTIME_ROOT/Python.framework" <<'PY'
 from pathlib import Path
 import sys
@@ -32,8 +32,8 @@ for path in sorted(Path(sys.argv[1]).rglob('*')):
                 print(path)
 PY
 )
-for path in "$PYTHON_APP" "$RUNTIME_ROOT/Python.framework"; do
-  /usr/bin/codesign --force --options runtime "${timestamp_args[@]}" --sign "$SIGNING_IDENTITY" "$path"
+for runtime_file in "$PYTHON_APP" "$RUNTIME_ROOT/Python.framework"; do
+  /usr/bin/codesign --force --options runtime "${timestamp_args[@]}" --sign "$SIGNING_IDENTITY" "$runtime_file"
 done
 /usr/bin/codesign \
   --force \
