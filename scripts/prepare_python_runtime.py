@@ -53,8 +53,11 @@ def main() -> int:
     version_root = destination / "Versions" / profile["framework_version"]
     # Keep the runtime and license; developer headers, test suites and Tk are not used by Photo Steward.
     for path in [version_root / "Headers", version_root / "include", version_root / "Frameworks", version_root / "lib" / f"python{profile['framework_version']}" / "test", version_root / "lib" / f"python{profile['framework_version']}" / "site-packages"]:
-        if path.is_dir() and not path.is_symlink():
+        if path.is_symlink():
+            path.unlink()
+        elif path.is_dir():
             shutil.rmtree(path)
+    (destination / "Headers").unlink(missing_ok=True)
     for path in destination.rglob("__pycache__"):
         shutil.rmtree(path)
     for path in (version_root / "lib" / f"python{profile['framework_version']}" / "lib-dynload").glob("_tkinter*.so"):
