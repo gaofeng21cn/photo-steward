@@ -1,0 +1,95 @@
+name: Release Photo Steward
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: photo-steward-release
+  cancel-in-progress: false
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify the product tag and source versions
+        run: |
+          [[ "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          test "$(git cat-file -t "$GITHUB_REF_NAME")" = tag
+          git fetch origin main --quiet
+          python3 - <<'PY'
+          import json, os, plistlib, tomllib
+          from pathlib import Path
+          version = os.environ['GITHUB_REF_NAME'].removeprefix('v')
+          import subprocess
+          subprocess.run(['git', 'merge-base', '--is-ancestor', os.environ['GITHUB_SHA'], 'origin/main'], check=True)
+          assert tomllib.loads(Path('pyproject.toml').read_text())['project']['version'] == version
+          assert json.loads(Path('opl-package.json').read_text())['version'] == version
+          assert plistlib.loads(Path('app/PhotoCenterMenuBar/Info.plist').read_bytes())['CFBundleShortVersionString'] == version
+          PY
+          python3 scripts/materialize_package.py --check
+      - name: Configure Apple signing and notarization
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+        run: |
+          set -euo pipefail
+          : "${BUILD_CERTIFICATE_BASE64:?Missing Developer ID certificate}"
+          : "${P12_PASSWORD:?Missing certificate password}"
+          : "${APPLE_ID:?Missing notarization account}"
+          : "${APPLE_ID_PASSWORD:?Missing notarization credential}"
+          : "${TEAM_ID:?Missing Apple team}"
+          keychain="$RUNNER_TEMP/photo-release.keychain-db"
+          password="$(openssl rand -hex 24)"
+          printf '%s' "$BUILD_CERTIFICATE_BASE64" | base64 --decode > "$RUNNER_TEMP/developer-id.p12"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          security import "$RUNNER_TEMP/developer-id.p12" -k "$keychain" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/developer-id.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$keychain" >/dev/null
+          security list-keychains -d user -s "$keychain"
+          security default-keychain -d user -s "$keychain"
+          xcrun notarytool store-credentials photo-steward-release --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$TEAM_ID" --keychain "$keychain"
+      - name: Build, notarize and verify the universal App
+        env:
+          PHOTO_STEWARD_NOTARY_PROFILE: photo-steward-release
+        run: scripts/package_release.sh --notarize
+      - name: Publish the same product version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          archive="dist/Photo-Steward-$version-macOS-universal.zip"
+          shasum -a 256 "$archive" > dist/SHA256SUMS
+          printf 'Signed and notarized macOS App for Photo Steward %s.\n\nSource commit: %s. The OPL Package uses the same product version and source tag.\n' "$version" "$GITHUB_SHA" > "$RUNNER_TEMP/release-notes.md"
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "Photo Steward $version" --notes-file "$RUNNER_TEMP/release-notes.md" "$archive" dist/SHA256SUMS
+          gh release view "$GITHUB_REF_NAME" --json tagName,assets > "$RUNNER_TEMP/release-readback.json"
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          tag = os.environ['GITHUB_REF_NAME']
+          name = f'Photo-Steward-{tag[1:]}-macOS-universal.zip'
+          release = json.loads((Path(os.environ['RUNNER_TEMP']) / 'release-readback.json').read_text())
+          assert release['tagName'] == tag
+          asset, = [a for a in release['assets'] if a['name'] == name]
+          assert asset['digest'] == 'sha256:' + hashlib.sha256((Path('dist') / name).read_bytes()).hexdigest()
+          PY
+      - name: Remove temporary Apple credentials
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/photo-release.keychain-db" || true

@@ -15,9 +15,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.4.8</string>
+	<string>0.4.9</string>
 	<key>CFBundleVersion</key>
-	<string>10</string>
+	<string>11</string>
 	<key>NSNetworkVolumesUsageDescription</key>
 	<string>访问 NAS 照片镜像以检查同步状态并执行已批准的计划。</string>
 	<key>NSPhotoLibraryUsageDescription</key>

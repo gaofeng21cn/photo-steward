@@ -9,6 +9,7 @@ FRESH_CLONE_SCRIPT="$ROOT_DIR/scripts/verify_fresh_clone.sh"
 [[ -x "$FRESH_CLONE_SCRIPT" ]]
 [[ -x "$ROOT_DIR/scripts/stage_runtime.sh" ]]
 [[ -x "$ROOT_DIR/scripts/sign_runtime.sh" ]]
+[[ -f "$ROOT_DIR/.github/workflows/release.yml" ]]
 [[ -f "$ROOT_DIR/app/PhotoCenterMenuBar/PhotoSteward.entitlements" ]]
 [[ -f "$ROOT_DIR/app/PhotoCenterMenuBar/Resources/PhotoSteward.png" ]]
 [[ -f "$ROOT_DIR/app/PhotoCenterMenuBar/Resources/PhotoSteward.icns" ]]
@@ -32,6 +33,9 @@ rg -Fq -- '"$SIGNING_IDENTITY" != "-"' "$ROOT_DIR/scripts/sign_runtime.sh"
 [[ "$(rg -Fc -- 'scripts/sign_runtime.sh' "$ROOT_DIR/scripts/install_menu_bar_app.sh")" == "2" ]]
 ! rg -Fq -- '--deep' "$ROOT_DIR/scripts/install_menu_bar_app.sh"
 rg -Fq -- 'fresh clone validation passed' "$FRESH_CLONE_SCRIPT"
+rg -Fq -- 'CFBundleShortVersionString' "$ROOT_DIR/.github/workflows/release.yml"
+rg -Fq -- 'gh release create "$GITHUB_REF_NAME" --verify-tag' "$ROOT_DIR/.github/workflows/release.yml"
+rg -Fq -- 'github.token' "$ROOT_DIR/.github/workflows/release.yml"
 
 lipo_line="$(rg -n -F '/usr/bin/lipo "${binaries[@]}" -create' "$PACKAGE_SCRIPT" | cut -d: -f1)"
 strip_line="$(rg -n -F '/usr/bin/strip -S "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"' "$PACKAGE_SCRIPT" | cut -d: -f1)"
