@@ -3,7 +3,7 @@
   "package_id": "photo-steward",
   "display_name": "Photo Steward",
   "publisher": "gaofeng21cn",
-  "version": "0.4.9",
+  "version": "0.4.10",
   "source": "first_party",
   "source_repo": "https://github.com/gaofeng21cn/photo-steward.git",
   "package_role": "capability_package",
@@ -171,13 +171,14 @@
     "paths": [
       ".codex-plugin/plugin.json",
       "app-contribution-adapter.json",
+      "assets/branding/photo-steward-logo.png",
       "plugin.json",
       "scripts/manage_installation.py",
       "skills/photo-steward/SKILL.md",
       "skills/photo-steward/agents/openai.yaml",
       "tools/icloud_photo_sync/installation.py"
     ],
-    "digest": "sha256:feaa710381dcc2c2e6ea36fab1ca756037315791973d30e2cf3fdbf7bd533e42"
+    "digest": "sha256:3d12be87c8ff5b0039d91e845e627068faaabc9e1c70145fcaba1f340e0c4332"
   },
   "presentation": {
     "display_name_i18n": {
@@ -188,6 +189,7 @@
       "zh-CN": "以 iCloud Photos 为主源，规划、审阅并执行照片镜像；Agent 与桌面共用同一运行时。",
       "en-US": "Plan, review, and apply photo mirrors from iCloud Photos through one shared Agent and desktop runtime."
     },
-    "software_type": "application"
+    "software_type": "application",
+    "icon_ref": "assets/branding/photo-steward-logo.png"
   }
 }

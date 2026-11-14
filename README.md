@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/branding/photo-steward-logo.png" alt="Photo Steward logo" width="132" />
+</p>
+
 <p align="center"><strong>English</strong> | <a href="./README.zh-CN.md">中文</a></p>
 
 <h1 align="center">Photo Steward</h1>

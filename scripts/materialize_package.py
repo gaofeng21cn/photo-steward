@@ -27,8 +27,12 @@ def materialize(*, check: bool = False) -> bool:
     root_manifest = json.loads((ROOT / "opl-package.json").read_text())
     carrier_manifest_path = CARRIER / "opl-package.json"
     copied = ["app-contribution-adapter.json", "scripts/manage_installation.py", "tools/icloud_photo_sync/installation.py"]
+    icon = root_manifest["presentation"]["icon_ref"]
+    copied.append(icon)
     copied.extend(str(path.relative_to(ROOT)) for path in (ROOT / "skills/photo-steward").rglob("*") if path.is_file() and "__pycache__" not in path.parts)
     if not check:
+        (CARRIER / icon).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / icon, CARRIER / icon)
         shutil.copyfile(ROOT / "app-contribution-adapter.json", CARRIER / "app-contribution-adapter.json")
         shutil.copytree(
             ROOT / "skills/photo-steward",

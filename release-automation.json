@@ -15,6 +15,10 @@
   ],
   "version_files": [
     {
+      "path": "app/PhotoCenterMenuBar/Info.plist",
+      "kind": "plist_bundle"
+    },
+    {
       "path": "pyproject.toml",
       "kind": "toml_project"
     }

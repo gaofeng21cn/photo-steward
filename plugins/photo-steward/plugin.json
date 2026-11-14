@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "photo-steward",
-  "version": "0.4.9",
+  "version": "0.4.10",
   "description": "Review guarded iCloud Photos mirror plans before explicit execution.",
   "author": {
     "name": "Gao Feng"
@@ -30,7 +30,9 @@
         "defaultPrompt": [
           "Inspect my Photo Steward status.",
           "Review the pending Photo Steward mirror plan."
-        ]
+        ],
+        "logo": "./assets/branding/photo-steward-logo.png",
+        "composerIcon": "./assets/branding/photo-steward-logo.png"
       }
     }
   }
