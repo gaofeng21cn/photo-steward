@@ -5,6 +5,10 @@ Package and `CFBundleShortVersionString`. A GitHub Release carries the signed
 and notarized macOS App for the same annotated source tag; OCI carries the
 Package form. These carriers do not introduce separate product versions.
 
+The daily Package publisher updates the declared versions, creates one annotated
+tag, and waits for `release.yml` to publish the notarized App. OCI stable
+preparation follows that exact workflow's success.
+
 ## Local Validation
 
 Run from a clean checkout:

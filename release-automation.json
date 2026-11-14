@@ -1,5 +1,6 @@
 {
   "strategy": "daily_patch",
+  "release_workflows": ["release.yml"],
   "prepare": [
     [
       "python3",
