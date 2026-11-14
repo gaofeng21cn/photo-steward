@@ -1,7 +1,9 @@
 # Release
 
-This document separates a public source release from a notarized macOS App
-release. The published App version is read from the exact GitHub release asset and its bundle, independently of a source checkout.
+Photo Steward has one product version, shared by `pyproject.toml`, the OPL
+Package and `CFBundleShortVersionString`. A GitHub Release carries the signed
+and notarized macOS App for the same annotated source tag; OCI carries the
+Package form. These carriers do not introduce separate product versions.
 
 ## Local Validation
 
@@ -41,9 +43,12 @@ distribution artifact.
 
 ## Published App
 
-Any public App release must be read back from its exact GitHub tag after
-notarization. A validation artifact is not a public distribution until the
-ticket is stapled, Gatekeeper accepts it, and the exact archive is published.
+Any public App release must use the same `v<version>` tag selected by the OPL
+Package and be read back from that exact tag after notarization. A validation
+artifact is not a public distribution until the ticket is stapled, Gatekeeper
+accepts it, and the exact archive is published. A Package version change must
+also update the bundle version before that version is described as the current
+App release.
 
 ## Notarization
 

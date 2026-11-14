@@ -13,10 +13,17 @@
       "--check"
     ]
   ],
+  "release_paths": [
+    "app/PhotoCenterMenuBar"
+  ],
   "version_files": [
     {
       "path": "pyproject.toml",
       "kind": "toml_project"
+    },
+    {
+      "path": "app/PhotoCenterMenuBar/Info.plist",
+      "kind": "plist_bundle"
     }
   ]
 }

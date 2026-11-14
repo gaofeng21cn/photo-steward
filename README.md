@@ -223,7 +223,9 @@ installation, and cross-host UI acceptance are separate validation surfaces.
 
 ## Current Release
 
-The latest published macOS release is identified by its GitHub release asset and bundle version. Its universal App
+Photo Steward has one product version across its Python package and macOS App.
+The App archive and the OCI Package are different installation forms of that
+version, built from the same tagged source. The universal App
 contains the CLI runtime, prebuilt Photos bridge, Codex Skill, first-run setup,
 in-app NAS configuration, and reviewable photo plans. The public archive is
 signed with Apple Developer ID, notarized, stapled, and accepted by Gatekeeper.
