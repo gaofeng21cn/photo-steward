@@ -1,5 +1,6 @@
 {
   "strategy": "daily_patch",
+  "release_workflows": ["release.yml"],
   "prepare": [
     [
       "python3",
@@ -13,14 +14,20 @@
       "--check"
     ]
   ],
+  "release_paths": [
+    "app/PhotoCenterMenuBar",
+    "tools",
+    "scripts",
+    "config"
+  ],
   "version_files": [
-    {
-      "path": "app/PhotoCenterMenuBar/Info.plist",
-      "kind": "plist_bundle"
-    },
     {
       "path": "pyproject.toml",
       "kind": "toml_project"
+    },
+    {
+      "path": "app/PhotoCenterMenuBar/Info.plist",
+      "kind": "plist_bundle"
     }
   ]
 }

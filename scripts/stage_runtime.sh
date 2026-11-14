@@ -14,6 +14,7 @@ mkdir -p \
 
 /usr/bin/rsync -a --exclude '__pycache__' --exclude '*.pyc' "$ROOT_DIR/tools/" "$OUTPUT_DIR/tools/"
 /usr/bin/ditto "$ROOT_DIR/skills/photo-steward" "$OUTPUT_DIR/skills/photo-steward"
+/usr/bin/ditto "$ROOT_DIR/opl-package.json" "$OUTPUT_DIR/opl-package.json"
 /usr/bin/ditto "$ROOT_DIR/scripts/lib/automation_common.sh" "$OUTPUT_DIR/scripts/lib/automation_common.sh"
 for script_name in \
   icloud-photo-sync \
@@ -92,7 +93,7 @@ NOTICES
 
 (
   cd "$OUTPUT_DIR"
-  find bin scripts skills tools python-runtime.json THIRD-PARTY-NOTICES.txt -type f | LC_ALL=C sort | while IFS= read -r file_path; do
+  find bin scripts skills tools opl-package.json python-runtime.json THIRD-PARTY-NOTICES.txt -type f | LC_ALL=C sort | while IFS= read -r file_path; do
     /usr/bin/shasum -a 256 "$file_path"
   done
 ) | /usr/bin/shasum -a 256 | /usr/bin/awk '{print $1}' > "$OUTPUT_DIR/.runtime-manifest"
