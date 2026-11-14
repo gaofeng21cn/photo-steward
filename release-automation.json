@@ -15,7 +15,10 @@
     ]
   ],
   "release_paths": [
-    "app/PhotoCenterMenuBar"
+    "app/PhotoCenterMenuBar",
+    "tools",
+    "scripts",
+    "config"
   ],
   "version_files": [
     {
