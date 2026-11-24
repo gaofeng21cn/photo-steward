@@ -147,7 +147,7 @@ def test_actual_owner_executes_frozen_review_bytes_when_plan_changes_during_pref
         path.write_text(json.dumps(changed))
     def run(snapshot):
         return run_apply(plan_dir=plan_dir, nas_root=nas, deleted_root=deleted,
-            state_db=tmp_path / "state.db", swift_source=tmp_path / "unused.swift",
+            state_db=tmp_path / "state.db",
             plan_snapshot=snapshot, expected_plan_revision=first["revision"])
     result = apply_reviewed_plan(plan_dir=plan_dir, plan_revision_value=first["revision"], request_id="frozen",
         nas_root=nas, deleted_root=deleted, apply_runner=run, preflight=change_plan)
@@ -168,14 +168,14 @@ def test_legacy_reapply_cannot_replace_the_reviewed_operation_receipt(tmp_path):
     first = build_plan_details(plan_dir, nas_root=nas, deleted_root=deleted)
     def run(snapshot):
         return run_apply(plan_dir=plan_dir, nas_root=nas, deleted_root=deleted,
-            state_db=tmp_path / "state.db", swift_source=tmp_path / "unused.swift",
+            state_db=tmp_path / "state.db",
             plan_snapshot=snapshot, expected_plan_revision=first["revision"])
     initial = apply_reviewed_plan(plan_dir=plan_dir, plan_revision_value=first["revision"], request_id="original",
         nas_root=nas, deleted_root=deleted, apply_runner=run)
     assert initial["status"] == "success"
     source.write_bytes(b"changed source")
     run_apply(plan_dir=plan_dir, nas_root=nas, deleted_root=deleted,
-              state_db=tmp_path / "state.db", swift_source=tmp_path / "unused.swift")
+              state_db=tmp_path / "state.db")
     reopened = build_plan_details(plan_dir, nas_root=nas, deleted_root=deleted)
     result = reopened["apply_result"]
     assert result["outcome"] == "receipt_changed"

@@ -226,12 +226,11 @@ def _clear_pending_plan(status_dir: Path, plan_dir: Path) -> None:
 def run_plan_job(
     *,
     library_path: Path,
-    db_path: Path,
+    db_path: Path | None = None,
     nas_root: Path,
     logs_root: Path,
     state_db: Path,
     stage_dir: Path,
-    swift_source: Path,
     status_dir: Path,
     plan_id: str | None = None,
     nas_mount_root: Path | None = None,
@@ -253,7 +252,6 @@ def run_plan_job(
             logs_root=logs_root,
             state_db=state_db,
             stage_dir=stage_dir,
-            swift_source=swift_source,
             plan_id=plan_id,
         )
         summary = _read_json(Path(plan_dir) / "plan_summary.json")
@@ -294,8 +292,9 @@ def run_apply_job(
     nas_root: Path,
     deleted_root: Path,
     state_db: Path,
-    swift_source: Path,
     status_dir: Path,
+    library_path: Path | None = None,
+    db_path: Path | None = None,
     nas_mount_root: Path | None = None,
     expected_nas_filesystem: str = "smbfs",
     apply_runner: Callable[..., Path] = run_apply,
@@ -310,15 +309,20 @@ def run_apply_job(
             expected_nas_filesystem=expected_nas_filesystem,
             mount_probe=mount_probe,
         )
-        receipt_path = apply_runner(
-            plan_dir=plan_dir,
-            nas_root=nas_root,
-            deleted_root=deleted_root,
-            state_db=state_db,
-            swift_source=swift_source,
-            **({"plan_snapshot": plan_snapshot, "expected_plan_revision": expected_plan_revision}
-               if plan_snapshot is not None or expected_plan_revision is not None else {}),
-        )
+        apply_kwargs: dict[str, object] = {
+            "plan_dir": plan_dir,
+            "nas_root": nas_root,
+            "deleted_root": deleted_root,
+            "state_db": state_db,
+        }
+        if library_path is not None:
+            apply_kwargs["library_path"] = library_path
+        if db_path is not None:
+            apply_kwargs["db_path"] = db_path
+        if plan_snapshot is not None or expected_plan_revision is not None:
+            apply_kwargs["plan_snapshot"] = plan_snapshot
+            apply_kwargs["expected_plan_revision"] = expected_plan_revision
+        receipt_path = apply_runner(**apply_kwargs)
         receipt = _read_json(Path(receipt_path))
     except Exception as exc:  # noqa: BLE001
         _write_status(

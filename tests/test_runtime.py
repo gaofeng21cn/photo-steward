@@ -118,7 +118,6 @@ def test_run_apply_commits_bindings_only_after_success(tmp_path: Path, monkeypat
         nas_root=tmp_path / "Photos",
         deleted_root=tmp_path / "Deleted",
         state_db=state_db,
-        swift_source=tmp_path / "bridge.swift",
     )
 
     store = StateStore(state_db)
@@ -144,7 +143,6 @@ def test_run_apply_leaves_bindings_pending_after_partial_receipt(tmp_path: Path,
         nas_root=tmp_path / "Photos",
         deleted_root=tmp_path / "Deleted",
         state_db=state_db,
-        swift_source=tmp_path / "bridge.swift",
     )
 
     store = StateStore(state_db)

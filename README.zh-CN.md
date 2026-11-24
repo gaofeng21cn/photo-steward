@@ -11,7 +11,7 @@
 
 > **一体化安装版本。** Photo Steward 是独立的 macOS 应用，采用
 > [Apache-2.0 许可证](./LICENSE)公开发布。发布包内置同步运行时、
-> Photos bridge、CLI、Codex Skill 和首次配置向导。
+> osxphotos 图库后端、CLI、Codex Skill 和首次配置向导。
 
 Photo Steward 用来协调本机 macOS Photos 图库、iCloud Photos 与 NAS 镜像。它先生成可审计的计划，解释差异，再在用户明确确认后变更镜像端。它不是云端相册、反向同步工具，也不是通用的照片资产管理系统。
 
@@ -153,7 +153,7 @@ photo-steward plan-job
 ## 当前版本
 
 `v0.4.2` 是当前正式发布的一体化 macOS 版本。通用架构 App 已内置 CLI 运行环境、
-预编译 Photos bridge、Codex Skill、首次启动向导、App 内 NAS 配置和可逐项查看的
+内置通用架构 `osxphotos` 图库后端、Codex Skill、首次启动向导、App 内 NAS 配置和可逐项查看的
 照片计划。公开下载包已使用 Apple Developer ID 签名，完成 Apple 公证并附加票据，
 可通过 Gatekeeper 验证。普通用户只需要从最新发布页安装 App；源码仓库和 checkout
 软链接安装器保留给贡献者。

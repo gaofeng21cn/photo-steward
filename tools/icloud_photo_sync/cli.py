@@ -33,8 +33,6 @@ from .runtime import run_apply, run_plan
 from . import installation
 
 
-DEFAULT_SWIFT_SOURCE = Path(__file__).with_name("photos_bridge.swift")
-
 
 def _add_nas_mount_contract(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--nas-mount-root", type=Path)
@@ -304,9 +302,10 @@ def build_parser() -> argparse.ArgumentParser:
     apply_reviewed_parser.add_argument("--contribution", action="store_true", help="return the shared contribution transport envelope")
     apply_reviewed_parser.add_argument("--nas-root", type=Path)
     apply_reviewed_parser.add_argument("--deleted-root", type=Path)
+    apply_reviewed_parser.add_argument("--library-path", type=Path)
+    apply_reviewed_parser.add_argument("--db-path", type=Path)
     apply_reviewed_parser.add_argument("--state-db", type=Path)
     apply_reviewed_parser.add_argument("--status-dir", type=Path)
-    apply_reviewed_parser.add_argument("--swift-source", type=Path, default=DEFAULT_SWIFT_SOURCE)
     _add_nas_mount_contract(apply_reviewed_parser)
 
     plan_parser = subparsers.add_parser("plan")
@@ -316,16 +315,16 @@ def build_parser() -> argparse.ArgumentParser:
     plan_parser.add_argument("--logs-root", type=Path)
     plan_parser.add_argument("--state-db", type=Path)
     plan_parser.add_argument("--stage-dir", type=Path)
-    plan_parser.add_argument("--swift-source", type=Path, default=DEFAULT_SWIFT_SOURCE)
     plan_parser.add_argument("--plan-id")
     _add_nas_mount_contract(plan_parser)
 
     apply_parser = subparsers.add_parser("apply")
     apply_parser.add_argument("--plan-dir", required=True)
+    apply_parser.add_argument("--library-path", type=Path)
+    apply_parser.add_argument("--db-path", type=Path)
     apply_parser.add_argument("--nas-root", type=Path)
     apply_parser.add_argument("--deleted-root", type=Path)
     apply_parser.add_argument("--state-db", type=Path)
-    apply_parser.add_argument("--swift-source", type=Path, default=DEFAULT_SWIFT_SOURCE)
     _add_nas_mount_contract(apply_parser)
 
     plan_job_parser = subparsers.add_parser("plan-job")
@@ -336,17 +335,17 @@ def build_parser() -> argparse.ArgumentParser:
     plan_job_parser.add_argument("--state-db", type=Path)
     plan_job_parser.add_argument("--status-dir", type=Path)
     plan_job_parser.add_argument("--stage-dir", type=Path)
-    plan_job_parser.add_argument("--swift-source", type=Path, default=DEFAULT_SWIFT_SOURCE)
     plan_job_parser.add_argument("--plan-id")
     _add_nas_mount_contract(plan_job_parser)
 
     apply_job_parser = subparsers.add_parser("apply-job")
     apply_job_parser.add_argument("--plan-dir", required=True)
+    apply_job_parser.add_argument("--library-path", type=Path)
+    apply_job_parser.add_argument("--db-path", type=Path)
     apply_job_parser.add_argument("--nas-root", type=Path)
     apply_job_parser.add_argument("--deleted-root", type=Path)
     apply_job_parser.add_argument("--state-db", type=Path)
     apply_job_parser.add_argument("--status-dir", type=Path)
-    apply_job_parser.add_argument("--swift-source", type=Path, default=DEFAULT_SWIFT_SOURCE)
     _add_nas_mount_contract(apply_job_parser)
 
     prune_parser = subparsers.add_parser("prune-deleted-pool")
@@ -534,7 +533,8 @@ def main(argv: list[str] | None = None) -> int:
                     preflight=lambda: _preflight_nas(args),
                     apply_runner=lambda snapshot: run_apply_job(
                         plan_dir=args.plan_dir, nas_root=args.nas_root, deleted_root=args.deleted_root,
-                        state_db=args.state_db, swift_source=args.swift_source, status_dir=args.status_dir,
+                        state_db=args.state_db, status_dir=args.status_dir,
+                        library_path=args.library_path, db_path=args.db_path,
                         nas_mount_root=args.nas_mount_root, expected_nas_filesystem=args.expected_nas_filesystem,
                         plan_snapshot=snapshot, expected_plan_revision=args.plan_revision,
                     ),
@@ -565,7 +565,6 @@ def main(argv: list[str] | None = None) -> int:
             logs_root=args.logs_root,
             state_db=args.state_db,
             stage_dir=args.stage_dir,
-            swift_source=args.swift_source,
             plan_id=args.plan_id,
         )
         print(plan_dir)
@@ -579,7 +578,8 @@ def main(argv: list[str] | None = None) -> int:
             nas_root=args.nas_root,
             deleted_root=args.deleted_root,
             state_db=args.state_db,
-            swift_source=args.swift_source,
+            library_path=args.library_path,
+            db_path=args.db_path,
         )
         return _print_receipt_result(receipt_path)
 
@@ -592,7 +592,6 @@ def main(argv: list[str] | None = None) -> int:
                 logs_root=args.logs_root,
                 state_db=args.state_db,
                 stage_dir=args.stage_dir,
-                swift_source=args.swift_source,
                 status_dir=args.status_dir,
                 plan_id=args.plan_id,
                 nas_mount_root=args.nas_mount_root,
@@ -611,8 +610,9 @@ def main(argv: list[str] | None = None) -> int:
                 nas_root=args.nas_root,
                 deleted_root=args.deleted_root,
                 state_db=args.state_db,
-                swift_source=args.swift_source,
                 status_dir=args.status_dir,
+                library_path=args.library_path,
+                db_path=args.db_path,
                 nas_mount_root=args.nas_mount_root,
                 expected_nas_filesystem=args.expected_nas_filesystem,
             )

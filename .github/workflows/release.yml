@@ -49,15 +49,15 @@ jobs:
       expected_team_id: SVVC4TA784
       signing_identity: "Developer ID Application: FENG GAO (SVVC4TA784)"
       expected_feed_url: "https://github.com/gaofeng21cn/photo-steward/releases/latest/download/appcast.xml"
-      verify_binaries: "Contents/MacOS/PhotoCenterMenuBar,Contents/Resources/PhotoStewardRuntime/bin/PhotoStewardPhotosBridge.app/Contents/MacOS/photos_bridge"
+      verify_binaries: "Contents/MacOS/PhotoCenterMenuBar,Contents/Resources/PhotoStewardRuntime/Python.framework/Versions/3.13/bin/python3.13"
       preflight_command: |
-        if python3 -m pytest --version >/dev/null 2>&1; then
+        if command -v uv >/dev/null 2>&1; then
+          uv run --no-project --with pytest --with osxphotos python -m pytest tests -q
+        elif python3 -c 'import pytest, osxphotos' >/dev/null 2>&1; then
           python3 -m pytest tests -q
-        elif command -v uv >/dev/null 2>&1; then
-          uv run --with pytest python -m pytest tests -q
         else
           python3 -m venv "$RUNNER_TEMP/pytest-venv"
-          "$RUNNER_TEMP/pytest-venv/bin/pip" install --quiet pytest
+          "$RUNNER_TEMP/pytest-venv/bin/pip" install --quiet pytest .
           "$RUNNER_TEMP/pytest-venv/bin/python" -m pytest tests -q
         fi
         zsh tests/test_menu_bar_app.sh

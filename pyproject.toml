@@ -9,7 +9,10 @@ description = "Guarded photo mirroring coordinator for macOS"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
-dependencies = ["tomli>=2.0.1; python_version < '3.11'"]
+dependencies = [
+  "osxphotos>=0.78.0",
+  "tomli>=2.0.1; python_version < '3.11'",
+]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: MacOS X",
@@ -29,8 +32,6 @@ icloud-photo-sync = "tools.icloud_photo_sync.cli:main"
 include = ["tools.icloud_photo_sync*"]
 namespaces = true
 
-[tool.setuptools.package-data]
-"tools.icloud_photo_sync" = ["*.swift"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

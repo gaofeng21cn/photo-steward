@@ -11,7 +11,7 @@
 
 > **Integrated installer.** Photo Steward is an independent macOS application
 > published under [Apache-2.0](./LICENSE). Its release bundle is
-> self-contained: it includes the sync runtime, Photos bridge, CLI, Codex
+> self-contained: it includes the sync runtime, osxphotos backend, CLI, Codex
 > Skill, and first-run setup.
 
 Photo Steward coordinates a local macOS Photos library, iCloud Photos, and a
@@ -230,7 +230,7 @@ installation, and cross-host UI acceptance are separate validation surfaces.
 Photo Steward has one product version across its Python package and macOS App.
 The App archive and the OCI Package are different installation forms of that
 version, built from the same tagged source. The universal App
-contains the CLI runtime, prebuilt Photos bridge, Codex Skill, first-run setup,
+contains the CLI runtime, bundled universal2 `osxphotos` backend, Codex Skill, first-run setup,
 in-app NAS configuration, and reviewable photo plans. The public archive is
 signed with Apple Developer ID, notarized, stapled, and accepted by Gatekeeper.
 The source checkout remains useful for contributors, but a normal user should
