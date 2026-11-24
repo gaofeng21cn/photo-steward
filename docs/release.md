@@ -16,6 +16,9 @@ Run from a clean checkout:
 ```bash
 python3 -m pytest tests -q
 swift build --package-path app/PhotoCenterMenuBar -c release
+zsh tests/test_menu_bar_app.sh
+zsh tests/test_release_packaging.sh
+zsh tests/test_sparkle_updater_contract.sh
 zsh tests/test_runtime_bundle.sh
 zsh scripts/verify_fresh_clone.sh <clone-source>
 ```
@@ -24,12 +27,21 @@ The fresh-clone script must run against the exact source revision intended for
 release. It checks the license, public examples, ignored runtime boundaries,
 privacy markers, Python tests, and Swift build.
 
-## Signed Artifact
+## Signed Artifact & Sparkle 2 Appcast
 
 The release packager builds arm64 and x86_64 binaries, combines them into one
-universal app, stages a universal Python framework, compiles the Photos bridge
+universal app, embeds and inside-out signs `Sparkle.framework` (`Installer.xpc`,
+`Downloader.xpc` with preserved entitlements, `Autoupdate`, `Updater.app`, and
+the framework), stages a universal Python framework, compiles the Photos bridge
 for both architectures, includes the CLI and Codex Skill, and signs the app
-with Developer ID and the hardened runtime:
+with Developer ID and the hardened runtime.
+
+GitHub Actions (`release.yml`) calls the shared
+`gaofeng21cn/one-person-lab/.github/workflows/reusable-macos-sparkle-release.yml@main`
+workflow to notarize both `Photo Steward.app` and `Photo-Steward.dmg`, sign
+`appcast.xml` using the Ed25519 private key in the `release` environment
+(`SPARKLE_ED25519_PRIVATE_KEY`), and publish `Photo-Steward.dmg`,
+`Photo-Steward.dmg.sha256`, and `appcast.xml` to the tagged GitHub Release.
 
 The bundled Python is pinned in `config/python-runtime.json`. The build verifies
 the official python.org installer's SHA-256, Python Software Foundation

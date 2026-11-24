@@ -9,19 +9,23 @@ FRESH_CLONE_SCRIPT="$ROOT_DIR/scripts/verify_fresh_clone.sh"
 [[ -x "$FRESH_CLONE_SCRIPT" ]]
 [[ -x "$ROOT_DIR/scripts/stage_runtime.sh" ]]
 [[ -x "$ROOT_DIR/scripts/sign_runtime.sh" ]]
+[[ -x "$ROOT_DIR/scripts/embed_sparkle.sh" ]]
+[[ -x "$ROOT_DIR/scripts/generate_appcast.sh" ]]
 [[ -f "$ROOT_DIR/.github/workflows/release.yml" ]]
 [[ -f "$ROOT_DIR/app/PhotoCenterMenuBar/PhotoSteward.entitlements" ]]
 [[ -f "$ROOT_DIR/app/PhotoCenterMenuBar/Resources/PhotoSteward.png" ]]
 [[ -f "$ROOT_DIR/app/PhotoCenterMenuBar/Resources/PhotoSteward.icns" ]]
-zsh -n "$PACKAGE_SCRIPT" "$FRESH_CLONE_SCRIPT"
+zsh -n "$PACKAGE_SCRIPT" "$FRESH_CLONE_SCRIPT" "$ROOT_DIR/scripts/embed_sparkle.sh" "$ROOT_DIR/scripts/generate_appcast.sh"
 plutil -extract CFBundleIconFile raw -o - \
   "$ROOT_DIR/app/PhotoCenterMenuBar/Info.plist" | rg -Fxq 'PhotoSteward.icns'
 rg -Fq -- '--notarize' "$PACKAGE_SCRIPT"
+rg -Fq -- '--app-only' "$PACKAGE_SCRIPT"
 rg -Fq -- 'Developer ID Application' "$PACKAGE_SCRIPT"
 rg -Fq -- 'lipo' "$PACKAGE_SCRIPT"
 rg -Fq -- '/usr/bin/strip -S "$APP_DIR/Contents/MacOS/PhotoCenterMenuBar"' "$PACKAGE_SCRIPT"
 rg -Fq -- 'xcrun notarytool submit' "$PACKAGE_SCRIPT"
 rg -Fq -- 'PhotoStewardRuntime' "$PACKAGE_SCRIPT"
+rg -Fq -- 'embed_sparkle.sh' "$PACKAGE_SCRIPT"
 rg -Fq -- 'prepare_python_runtime.py' "$ROOT_DIR/scripts/stage_runtime.sh"
 rg -Fq -- 'stage_runtime.sh' "$PACKAGE_SCRIPT"
 rg -Fq -- 'sign_runtime.sh' "$PACKAGE_SCRIPT"
@@ -34,6 +38,8 @@ rg -Fq -- '"$SIGNING_IDENTITY" != "-"' "$ROOT_DIR/scripts/sign_runtime.sh"
 ! rg -Fq -- '--deep' "$ROOT_DIR/scripts/install_menu_bar_app.sh"
 rg -Fq -- 'fresh clone validation passed' "$FRESH_CLONE_SCRIPT"
 rg -Fq -- 'CFBundleShortVersionString' "$ROOT_DIR/.github/workflows/release.yml"
+rg -Fq -- 'reusable-macos-sparkle-release.yml' "$ROOT_DIR/.github/workflows/release.yml"
+rg -Fq -- 'appcast.xml' "$ROOT_DIR/.github/workflows/release.yml"
 rg -Fq -- 'gh release create "$GITHUB_REF_NAME" --verify-tag' "$ROOT_DIR/.github/workflows/release.yml"
 rg -Fq -- 'github.token' "$ROOT_DIR/.github/workflows/release.yml"
 

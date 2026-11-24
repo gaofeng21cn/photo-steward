@@ -40,6 +40,7 @@ private struct MenuBarStatusIcon: View {
 struct PhotoCenterApp: App {
     @StateObject private var store = PhotoCenterStore(autoRefresh: false)
     @StateObject private var runtime = PhotoStewardRuntimeController()
+    @StateObject private var updater = AppUpdater()
 
     var body: some Scene {
         Window("Photo Steward", id: ControlCenterView.windowID) {
@@ -48,6 +49,13 @@ struct PhotoCenterApp: App {
         .defaultSize(width: 960, height: 640)
         .commands {
             CommandGroup(after: .appInfo) {
+                Button("检查更新…") {
+                    updater.checkForUpdates()
+                }
+                .disabled(!updater.canCheckForUpdates)
+
+                Divider()
+
                 Button("刷新状态") {
                     store.refresh()
                 }
@@ -64,7 +72,7 @@ struct PhotoCenterApp: App {
 
         MenuBarExtra {
             if runtime.isReady {
-                MenuBarPopover(store: store)
+                MenuBarPopover(store: store, updater: updater)
             } else {
                 SetupView(controller: runtime) {
                     store.refresh()
@@ -80,7 +88,7 @@ struct PhotoCenterApp: App {
     @ViewBuilder
     private var rootView: some View {
         if runtime.isReady {
-            ControlCenterView(store: store, runtime: runtime)
+            ControlCenterView(store: store, runtime: runtime, updater: updater)
                 .onAppear {
                     if store.bundle.jobs.isEmpty {
                         store.refresh()

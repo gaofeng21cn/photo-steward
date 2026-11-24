@@ -54,5 +54,8 @@ rg -Fq '预览读取超时' "$SOURCE_DIR/Views/PlanReviewView.swift"
 rg -Fq '在 Finder 中查看' "$SOURCE_DIR/Views/PlanReviewView.swift"
 rg -Fq '未找到已配置的 NAS 挂载点' "$SOURCE_DIR/Services/PhotoCenterStore.swift"
 rg -Fq 'nas mount unavailable' "$SOURCE_DIR/Services/PhotoCenterStore.swift"
+rg -Fq 'SPUStandardUpdaterController' "$SOURCE_DIR/Services/AppUpdater.swift"
+rg -Fq 'updater.checkForUpdates()' "$SOURCE_DIR/Views/MenuBarPopover.swift"
+rg -Fq 'updater.checkForUpdates()' "$SOURCE_DIR/Views/ConfigurationView.swift"
 
 print "menu_bar_app: static console UX contract and plist valid"

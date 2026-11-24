@@ -3,6 +3,7 @@ import SwiftUI
 
 struct MenuBarPopover: View {
     @ObservedObject var store: PhotoCenterStore
+    @ObservedObject var updater: AppUpdater
 
     @Environment(\.openWindow) private var openWindow
 
@@ -71,10 +72,27 @@ struct MenuBarPopover: View {
                 .disabled(isExecuting)
             }
 
-            Button("退出", systemImage: "power") {
-                NSApplication.shared.terminate(nil)
+            if let availableUpdate = updater.availableUpdateDisplayLabel {
+                Button("有可用更新（\(availableUpdate)）", systemImage: "arrow.down.circle.fill") {
+                    updater.checkForUpdates()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
+
+            HStack {
+                Button("检查更新…", systemImage: "arrow.triangle.2.circlepath") {
+                    updater.checkForUpdates()
+                }
+                .disabled(!updater.canCheckForUpdates)
+
+                Spacer()
+
+                Button("退出", systemImage: "power") {
+                    NSApplication.shared.terminate(nil)
+                }
+            }
         }
         .padding(16)
         .frame(width: 340)
