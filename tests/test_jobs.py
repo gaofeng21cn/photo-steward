@@ -51,7 +51,6 @@ def test_run_plan_job_writes_success_status_and_overview(tmp_path: Path) -> None
         logs_root=logs_root,
         state_db=state_db,
         stage_dir=tmp_path / "stage",
-        swift_source=tmp_path / "photos_bridge.swift",
         status_dir=status_dir,
         nas_mount_root=tmp_path,
         plan_runner=fake_plan_runner,
@@ -91,7 +90,6 @@ def test_run_plan_job_writes_failure_status_and_reraises(tmp_path: Path) -> None
             logs_root=tmp_path / "logs",
             state_db=tmp_path / "state.sqlite3",
             stage_dir=tmp_path / "stage",
-            swift_source=tmp_path / "photos_bridge.swift",
             status_dir=status_dir,
             plan_runner=fake_plan_runner,
         )
@@ -191,7 +189,6 @@ def test_failure_preserves_previous_success_and_pending_plan(tmp_path: Path) -> 
         logs_root=tmp_path / "logs",
         state_db=tmp_path / "state.db",
         stage_dir=tmp_path / "stage",
-        swift_source=tmp_path / "bridge.swift",
         status_dir=status_dir,
         plan_runner=lambda **kwargs: plan_dir,
     )
@@ -207,7 +204,6 @@ def test_failure_preserves_previous_success_and_pending_plan(tmp_path: Path) -> 
             logs_root=tmp_path / "logs",
             state_db=tmp_path / "state.db",
             stage_dir=tmp_path / "stage",
-            swift_source=tmp_path / "bridge.swift",
             status_dir=status_dir,
             plan_runner=fail_plan,
         )
@@ -236,7 +232,6 @@ def test_record_job_failure_preserves_last_success(tmp_path: Path) -> None:
         logs_root=tmp_path / "logs",
         state_db=tmp_path / "state.db",
         stage_dir=tmp_path / "stage",
-        swift_source=tmp_path / "bridge.swift",
         status_dir=status_dir,
         plan_runner=lambda **kwargs: plan_dir,
     )

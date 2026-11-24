@@ -32,7 +32,7 @@ privacy markers, Python tests, and Swift build.
 The release packager builds arm64 and x86_64 binaries, combines them into one
 universal app, embeds and inside-out signs `Sparkle.framework` (`Installer.xpc`,
 `Downloader.xpc` with preserved entitlements, `Autoupdate`, `Updater.app`, and
-the framework), stages a universal Python framework, compiles the Photos bridge
+the framework), stages a universal Python framework with universal2 `osxphotos`
 for both architectures, includes the CLI and Codex Skill, and signs the app
 with Developer ID and the hardened runtime.
 

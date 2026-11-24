@@ -59,7 +59,7 @@ and policy but no credentials. Runtime state, caches, plans, receipts, and logs
 stay outside Git. See [`configuration.md`](./configuration.md).
 
 The integrated installer is the normal distribution path: a versioned,
-notarized App carries the runtime, CLI, Photos bridge, and Codex Skill, then
+notarized App carries the runtime (with bundled `osxphotos`), CLI, and Codex Skill, then
 installs them into user-owned locations on first launch. Checkout-linked
 installers remain available only for development and testing. On startup, the
 App removes legacy `com.photosteward.*` schedules from older versions and does

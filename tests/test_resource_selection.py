@@ -1,4 +1,4 @@
-from tools.icloud_photo_sync.photos_bridge import PhotosResourceDescriptor
+from tools.icloud_photo_sync.photos_backend import PhotosResourceDescriptor
 from tools.icloud_photo_sync.runtime import select_primary_media_resources
 
 

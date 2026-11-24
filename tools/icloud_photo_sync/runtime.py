@@ -10,8 +10,7 @@ from tempfile import TemporaryDirectory
 from .apply import execute_apply
 from .fingerprint import FingerprintService
 from .models import ICloudResource, NasFile, SyncPlan
-from .photos_bridge import PhotosBridge, PhotosResourceDescriptor
-from .photos_db import AssetMeta, load_asset_index_if_available
+from .photos_backend import OSXPhotosBackend, PhotosResourceDescriptor
 from .planner import build_sync_plan
 from .state import StateStore
 from .review import plan_revision, read_plan_snapshot
@@ -135,10 +134,9 @@ def _iter_nas_files(nas_root: Path, fingerprinter: FingerprintService) -> list[N
 
 
 def _build_icloud_resources(
-    asset_index: dict[str, AssetMeta],
     resource_descriptors: list[PhotosResourceDescriptor],
     fingerprinter: FingerprintService,
-    bridge: PhotosBridge,
+    backend: OSXPhotosBackend,
     store: StateStore,
     stage_dir: Path,
 ) -> tuple[list[ICloudResource], list[dict]]:
@@ -166,27 +164,19 @@ def _build_icloud_resources(
 
     for asset_uuid, descriptors in sorted(grouped.items()):
         descriptors.sort(key=lambda item: item.resource_index)
-        meta = asset_index.get(asset_uuid)
-        local_primary_path = Path(meta.local_primary_path) if meta and meta.local_primary_path else None
-        local_primary_consumed = False
 
         for descriptor in descriptors:
             resource_key = descriptor.resource_key
             created_at = (
-                (meta.created_at if meta else None)
-                or descriptor.creation_date
+                descriptor.creation_date
                 or descriptor.modification_date
                 or datetime.now().astimezone().isoformat()
             )
+            local_path = Path(descriptor.local_path) if descriptor.local_path else None
 
             try:
-                if (
-                    local_primary_path
-                    and local_primary_path.exists()
-                    and not local_primary_consumed
-                    and normalize_filename(local_primary_path.name) == normalize_filename(descriptor.original_filename)
-                ):
-                    fingerprint = fingerprinter.fingerprint_path("icloud_local", resource_key, local_primary_path)
+                if local_path and local_path.is_file():
+                    fingerprint = fingerprinter.fingerprint_path("icloud_local", resource_key, local_path)
                     results.append(
                         ICloudResource(
                             resource_key=resource_key,
@@ -198,11 +188,10 @@ def _build_icloud_resources(
                             sha256=fingerprint.sha256,
                             bytes_count=fingerprint.bytes_count,
                             source_kind="local_file",
-                            source_path=str(local_primary_path),
+                            source_path=str(local_path),
                             source_state_token=fingerprint.state_token,
+                        )
                     )
-                    )
-                    local_primary_consumed = True
                     emit_progress()
                     continue
 
@@ -257,7 +246,7 @@ def _build_icloud_resources(
     batch_size = 25
     for batch_start in range(0, len(pending_exports), batch_size):
         batch = pending_exports[batch_start : batch_start + batch_size]
-        responses = bridge.export_resources_batch(
+        responses = backend.export_resources_batch(
             [
                 {
                     "request_id": item["request_id"],
@@ -356,13 +345,13 @@ def persist_plan_bundle(
 def run_plan(
     *,
     library_path: Path,
-    db_path: Path,
+    db_path: Path | None = None,
     nas_root: Path,
     logs_root: Path,
     state_db: Path,
     stage_dir: Path,
-    swift_source: Path,
     plan_id: str | None = None,
+    photos_backend: OSXPhotosBackend | None = None,
 ) -> Path:
     plan_id = plan_id or _default_plan_id()
     dated_dir = logs_root / datetime.now().astimezone().strftime("%Y-%m-%d") / plan_id
@@ -370,31 +359,17 @@ def run_plan(
     print(json.dumps({"stage": "plan_start", "plan_id": plan_id}, ensure_ascii=False), flush=True)
     store = StateStore(state_db)
     fingerprinter = FingerprintService(store)
-    bridge = PhotosBridge(swift_source=swift_source, build_dir=state_db.parent / "bin")
+    backend = photos_backend or OSXPhotosBackend(library_path=library_path, db_path=db_path)
 
-    print(json.dumps({"stage": "load_asset_index"}, ensure_ascii=False), flush=True)
-    asset_index_result = load_asset_index_if_available(library_path=library_path, db_path=db_path)
-    asset_index = asset_index_result.asset_index
-    if asset_index_result.warning:
-        print(
-            json.dumps(
-                {
-                    "stage": "asset_index_unavailable",
-                    "asset_index_source": asset_index_result.source,
-                    "warning": asset_index_result.warning,
-                },
-                ensure_ascii=False,
-            ),
-            flush=True,
-        )
     print(json.dumps({"stage": "list_photos_resources"}, ensure_ascii=False), flush=True)
-    all_resource_descriptors = bridge.list_resources()
+    all_resource_descriptors = backend.list_resources()
     resource_descriptors = select_primary_media_resources(all_resource_descriptors)
+    asset_count = len({item.asset_uuid for item in all_resource_descriptors})
     print(
         json.dumps(
             {
                 "stage": "photos_resources_listed",
-                "asset_count": len(asset_index),
+                "asset_count": asset_count,
                 "resource_count_all": len(all_resource_descriptors),
                 "resource_count_selected": len(resource_descriptors),
             },
@@ -406,10 +381,9 @@ def run_plan(
 
     with TemporaryDirectory(prefix=f"{plan_id}-", dir=stage_dir) as temp_stage:
         icloud_resources, unresolved = _build_icloud_resources(
-            asset_index=asset_index,
             resource_descriptors=resource_descriptors,
             fingerprinter=fingerprinter,
-            bridge=bridge,
+            backend=backend,
             store=store,
             stage_dir=Path(temp_stage),
         )
@@ -456,8 +430,8 @@ def run_plan(
         nas_files=nas_files,
         unresolved=unresolved,
         extra_summary={
-            "asset_index_source": asset_index_result.source,
-            "asset_index_warning": asset_index_result.warning,
+            "asset_index_source": "osxphotos",
+            "asset_index_warning": None,
         },
     )
 
@@ -485,22 +459,24 @@ def run_apply(
     nas_root: Path,
     deleted_root: Path,
     state_db: Path,
-    swift_source: Path,
+    library_path: Path | None = None,
+    db_path: Path | None = None,
     plan_snapshot: dict[str, bytes] | None = None,
     expected_plan_revision: str | None = None,
+    photos_backend: OSXPhotosBackend | None = None,
 ) -> Path:
     captured = read_plan_snapshot(plan_dir) if plan_snapshot is None else plan_snapshot
     revision = plan_revision(plan_dir, nas_root=nas_root, deleted_root=deleted_root, snapshot=captured)
     if expected_plan_revision is not None and revision != expected_plan_revision:
         raise ValueError("plan_revision_conflict")
     store = StateStore(state_db)
-    bridge = PhotosBridge(swift_source=swift_source, build_dir=state_db.parent / "bin")
+    backend = photos_backend or OSXPhotosBackend(library_path=library_path, db_path=db_path)
 
     class PhotosPlanExporter:
         def __call__(self, action: dict, temp_root: Path) -> Path:
             filename = normalize_filename(action["original_filename"])
             output_path = temp_root / f"{action['resource_key'].replace('/', '_')}__{filename}"
-            return bridge.export_resource(action["asset_local_identifier"], int(action["resource_index"]), output_path)
+            return backend.export_resource(action["asset_local_identifier"], int(action["resource_index"]), output_path)
 
         def export_batch(self, actions: list[dict], temp_root: Path) -> dict[str, Path]:
             if not actions:
@@ -517,7 +493,7 @@ def run_apply(
                         "output_path": str(output_path),
                     }
                 )
-            responses = bridge.export_resources_batch(requests)
+            responses = backend.export_resources_batch(requests)
             exported: dict[str, Path] = {}
             for action in actions:
                 payload = responses.get(action["resource_key"])
