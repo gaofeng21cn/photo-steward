@@ -12,12 +12,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  macos:
-    runs-on: macos-latest
-    timeout-minutes: 60
-    environment: release
-    permissions:
-      contents: write
+  preflight:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -29,67 +25,105 @@ jobs:
           test "$(git cat-file -t "$GITHUB_REF_NAME")" = tag
           git fetch origin main --quiet
           python3 - <<'PY'
-          import json, os, plistlib, tomllib
+          import json, os, plistlib, subprocess, tomllib
           from pathlib import Path
           version = os.environ['GITHUB_REF_NAME'].removeprefix('v')
-          import subprocess
           subprocess.run(['git', 'merge-base', '--is-ancestor', os.environ['GITHUB_SHA'], 'origin/main'], check=True)
           assert tomllib.loads(Path('pyproject.toml').read_text())['project']['version'] == version
           assert json.loads(Path('opl-package.json').read_text())['version'] == version
           assert plistlib.loads(Path('app/PhotoCenterMenuBar/Info.plist').read_bytes())['CFBundleShortVersionString'] == version
           PY
           python3 scripts/materialize_package.py --check
-      - name: Configure Apple signing and notarization
-        env:
-          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
-          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          TEAM_ID: ${{ secrets.TEAM_ID }}
-        run: |
-          set -euo pipefail
-          : "${BUILD_CERTIFICATE_BASE64:?Missing Developer ID certificate}"
-          : "${P12_PASSWORD:?Missing certificate password}"
-          : "${APPLE_ID:?Missing notarization account}"
-          : "${APPLE_ID_PASSWORD:?Missing notarization credential}"
-          : "${TEAM_ID:?Missing Apple team}"
-          keychain="$RUNNER_TEMP/photo-release.keychain-db"
-          password="$(openssl rand -hex 24)"
-          printf '%s' "$BUILD_CERTIFICATE_BASE64" | base64 --decode > "$RUNNER_TEMP/developer-id.p12"
-          security create-keychain -p "$password" "$keychain"
-          security set-keychain-settings -lut 21600 "$keychain"
-          security unlock-keychain -p "$password" "$keychain"
-          security import "$RUNNER_TEMP/developer-id.p12" -k "$keychain" -P "$P12_PASSWORD" -T /usr/bin/codesign
-          rm "$RUNNER_TEMP/developer-id.p12"
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$password" "$keychain" >/dev/null
-          security list-keychains -d user -s "$keychain"
-          security default-keychain -d user -s "$keychain"
-          xcrun notarytool store-credentials photo-steward-release --apple-id "$APPLE_ID" --password "$APPLE_ID_PASSWORD" --team-id "$TEAM_ID" --keychain "$keychain"
-      - name: Build, notarize and verify the universal App
-        env:
-          PHOTO_STEWARD_NOTARY_PROFILE: photo-steward-release
-        run: scripts/package_release.sh --notarize
+
+  macos:
+    needs: preflight
+    uses: gaofeng21cn/one-person-lab/.github/workflows/reusable-macos-sparkle-release.yml@main
+    secrets: inherit
+    with:
+      release_tag: ${{ github.ref_name }}
+      app_name: "Photo Steward.app"
+      dmg_name: Photo-Steward.dmg
+      volume_name: "Photo Steward"
+      bundle_id: com.photosteward.photo-center
+      display_name: "Photo Steward"
+      expected_team_id: SVVC4TA784
+      signing_identity: "Developer ID Application: FENG GAO (SVVC4TA784)"
+      expected_feed_url: "https://github.com/gaofeng21cn/photo-steward/releases/latest/download/appcast.xml"
+      verify_binaries: "Contents/MacOS/PhotoCenterMenuBar,Contents/Resources/PhotoStewardRuntime/bin/PhotoStewardPhotosBridge.app/Contents/MacOS/photos_bridge"
+      preflight_command: |
+        if python3 -m pytest --version >/dev/null 2>&1; then
+          python3 -m pytest tests -q
+        elif command -v uv >/dev/null 2>&1; then
+          uv run --with pytest python -m pytest tests -q
+        else
+          python3 -m venv "$RUNNER_TEMP/pytest-venv"
+          "$RUNNER_TEMP/pytest-venv/bin/pip" install --quiet pytest
+          "$RUNNER_TEMP/pytest-venv/bin/python" -m pytest tests -q
+        fi
+        zsh tests/test_menu_bar_app.sh
+        zsh tests/test_release_packaging.sh
+        swift build --package-path app/PhotoCenterMenuBar -c release
+        zsh tests/test_sparkle_updater_contract.sh
+      build_app_command: 'PHOTO_STEWARD_SIGNING_IDENTITY="$OPL_SIGNING_IDENTITY" ./scripts/package_release.sh --app-only'
+
+  publish:
+    needs:
+      - preflight
+      - macos
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-macos
+          path: dist
       - name: Publish the same product version
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
-          archive="dist/Photo-Steward-$version-macOS-universal.zip"
-          shasum -a 256 "$archive" > dist/SHA256SUMS
-          printf 'Signed and notarized macOS App for Photo Steward %s.\n\nSource commit: %s. The OPL Package uses the same product version and source tag.\n' "$version" "$GITHUB_SHA" > "$RUNNER_TEMP/release-notes.md"
-          gh release create "$GITHUB_REF_NAME" --verify-tag --title "Photo Steward $version" --notes-file "$RUNNER_TEMP/release-notes.md" "$archive" dist/SHA256SUMS
+          (cd dist && sha256sum --check Photo-Steward.dmg.sha256)
+          printf 'Signed and notarized universal macOS App for Photo Steward %s with Sparkle 2 in-app automatic updates.\n\nSource commit: %s. The OPL Package uses the same product version and source tag.\n' "$version" "$GITHUB_SHA" > "$RUNNER_TEMP/release-notes.md"
+          gh release create "$GITHUB_REF_NAME" --verify-tag \
+            --title "Photo Steward $version" \
+            --notes-file "$RUNNER_TEMP/release-notes.md" \
+            dist/Photo-Steward.dmg \
+            dist/Photo-Steward.dmg.sha256 \
+            dist/appcast.xml
           gh release view "$GITHUB_REF_NAME" --json tagName,assets > "$RUNNER_TEMP/release-readback.json"
           python3 - <<'PY'
           import hashlib, json, os
           from pathlib import Path
+          import xml.etree.ElementTree as ET
+
           tag = os.environ['GITHUB_REF_NAME']
-          name = f'Photo-Steward-{tag[1:]}-macOS-universal.zip'
+          version = tag[1:]
           release = json.loads((Path(os.environ['RUNNER_TEMP']) / 'release-readback.json').read_text())
           assert release['tagName'] == tag
-          asset, = [a for a in release['assets'] if a['name'] == name]
-          assert asset['digest'] == 'sha256:' + hashlib.sha256((Path('dist') / name).read_bytes()).hexdigest()
+          expected = {
+              'Photo-Steward.dmg': Path('dist/Photo-Steward.dmg'),
+              'Photo-Steward.dmg.sha256': Path('dist/Photo-Steward.dmg.sha256'),
+              'appcast.xml': Path('dist/appcast.xml'),
+          }
+          assets = {a['name']: a for a in release['assets']}
+          assert set(assets) == set(expected), sorted(assets)
+          for name, path in expected.items():
+              assert assets[name]['digest'] == 'sha256:' + hashlib.sha256(path.read_bytes()).hexdigest()
+
+          sparkle_ns = 'http://www.andymatuschak.org/xml-namespaces/sparkle'
+          ns = {'sparkle': sparkle_ns}
+          root = ET.parse('dist/appcast.xml').getroot()
+          items = root.findall('./channel/item')
+          assert len(items) == 1
+          item = items[0]
+          assert item.findtext('sparkle:shortVersionString', namespaces=ns) == version
+          assert item.findtext('sparkle:version', namespaces=ns)
+          assert not item.findtext('sparkle:hardwareRequirements', namespaces=ns)
+          enc = item.find('enclosure')
+          assert enc is not None
+          assert enc.attrib.get('url') == f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/{tag}/Photo-Steward.dmg"
+          assert enc.attrib.get('length') == str(Path('dist/Photo-Steward.dmg').stat().st_size)
+          assert enc.attrib.get(f'{{{sparkle_ns}}}edSignature')
           PY
-      - name: Remove temporary Apple credentials
-        if: always()
-        run: security delete-keychain "$RUNNER_TEMP/photo-release.keychain-db" || true

@@ -183,7 +183,7 @@ entry points. See [`docs/automation.md`](./docs/automation.md).
 
 Photo Steward is one OPL MiniApp with desktop, CLI, Skill, and shared MCP review entry points. The software center manages the product; a Codex plugin is an integration entry point, not another photo application. Release and development installations can coexist, with one explicitly selected runtime for desktop, Agent, and CLI use.
 
-`photo-steward installation inspect --json` reads versions, actual paths, activation, and supported operations without accessing Photos, NAS, or private configuration. Release updates use exact signed, notarized GitHub artifacts. Development connections can be activated or unlinked; updating software never edits a checkout. Uninstalling keeps photos, configuration, plans, and receipts. See [installation management](docs/installation-management.md).
+`photo-steward installation inspect --json` reads versions, actual paths, activation, and supported operations offline without accessing Photos, NAS, or private configuration. Published desktop updates are handled natively in-app via Sparkle 2 from the Ed25519-signed `appcast.xml` feed (`Photo-Steward.dmg`), while `installation` manages lightweight `~/.local/bin` CLI and Codex Skill activation and developer checkout links without altering photos, configuration, plans, or receipts. See [installation management](docs/installation-management.md).
 
 ## Architecture
 

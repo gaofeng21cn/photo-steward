@@ -40,6 +40,7 @@ struct ControlCenterView: View {
 
     @ObservedObject var store: PhotoCenterStore
     @ObservedObject var runtime: PhotoStewardRuntimeController
+    @ObservedObject var updater: AppUpdater
     @State private var selection: ControlCenterSection? = .overview
 
     var body: some View {
@@ -96,7 +97,7 @@ struct ControlCenterView: View {
         case .activity:
             ActivityView(store: store)
         case .settings:
-            ConfigurationView(controller: runtime)
+            ConfigurationView(controller: runtime, updater: updater)
         }
     }
 

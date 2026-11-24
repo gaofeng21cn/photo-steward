@@ -195,4 +195,4 @@ Package 的状态和计划视图由 Photo CLI 直接输出：`status --view`、`
 
 Photo Steward 是一个 OPL MiniApp，桌面、CLI、Skill 和共享 MCP 审阅界面属于同一产品。正式安装与开发源码可以并存；软件中心选定唯一激活实例后，桌面、Agent 和 CLI 共用其运行时。
 
-`photo-steward installation inspect --json` 无需照片配置即可回读真实版本、路径、激活状态及可用操作。正式版使用精确签名、公证发行包更新；开发源码只显式接入、切换或解绑。卸载保留照片、配置、计划与回执。详见[安装管理](docs/installation-management.md)。
+`photo-steward installation inspect --json` 离线回读真实版本、路径、激活状态及可用操作。正式版桌面应用内置 Sparkle 2 自动检查与 Ed25519 签名更新（通过 `Photo-Steward.dmg` 与 `appcast.xml`）；`installation` 仅负责轻量级 `~/.local/bin` CLI、Codex Skill 激活与开发源码软链接管理，不触碰照片、配置、计划与回执。详见[安装管理](docs/installation-management.md)。

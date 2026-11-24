@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ConfigurationView: View {
     @ObservedObject var controller: PhotoStewardRuntimeController
+    @ObservedObject var updater: AppUpdater
 
     @State private var photosLibrary: URL?
     @State private var nasPhotos: URL?
@@ -56,6 +57,24 @@ struct ConfigurationView: View {
                         .foregroundStyle(.red)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+            }
+
+            Section("应用更新") {
+                LabeledContent("当前版本", value: updater.currentVersionLabel)
+                Toggle("自动检查更新", isOn: $updater.automaticallyChecksForUpdates)
+                    .disabled(!updater.isConfigured)
+                if let availableUpdate = updater.availableUpdateDisplayLabel {
+                    Label("发现新版本 \(availableUpdate)", systemImage: "arrow.down.circle.fill")
+                        .foregroundStyle(.blue)
+                }
+                Button("检查更新…", systemImage: "arrow.triangle.2.circlepath") {
+                    updater.checkForUpdates()
+                }
+                .disabled(!updater.canCheckForUpdates)
+                Text("Photo Steward 使用 Sparkle 2 验证 Ed25519 签名与公证更新包，仅在你确认后安装。")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Section("说明") {

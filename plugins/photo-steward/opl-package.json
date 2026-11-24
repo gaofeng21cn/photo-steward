@@ -47,18 +47,9 @@
         "development_manifest": "pyproject.toml"
       },
       "kind": "opl_software_installation_cli",
-      "release_target": {
-        "version": "0.4.8",
-        "channel": "stable",
-        "tag": "v0.4.8",
-        "asset": "Photo-Steward-0.4.8-macOS-universal.zip"
-      },
       "operations": [
         "inspect",
-        "install",
         "activate",
-        "update",
-        "uninstall",
         "link",
         "unlink"
       ]
@@ -178,7 +169,7 @@
       "skills/photo-steward/agents/openai.yaml",
       "tools/icloud_photo_sync/installation.py"
     ],
-    "digest": "sha256:c13bbf663a5bf97ed1e4774474ae0fe4681286dc6d8f7b04384aa1e688d8ab92"
+    "digest": "sha256:9a57a998af0097e810c29b6f60efb1eaafbf4c1fae3866d1becfc0778f4a5b3f"
   },
   "presentation": {
     "display_name_i18n": {

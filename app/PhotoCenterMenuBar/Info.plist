@@ -18,9 +18,21 @@
 	<string>0.4.12</string>
 	<key>CFBundleVersion</key>
 	<string>14</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>13.0</string>
 	<key>NSNetworkVolumesUsageDescription</key>
 	<string>访问 NAS 照片镜像以检查同步状态并执行已批准的计划。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>读取本机 Photos 图库，用于生成受控的 NAS 镜像计划。</string>
+	<key>SUAutomaticallyUpdate</key>
+	<false/>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://github.com/gaofeng21cn/photo-steward/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>Xz6W5I+5dhC9Chad9l3wvSdlYA96YpqNi+Hb/SEcPf0=</string>
+	<key>SUScheduledCheckInterval</key>
+	<integer>21600</integer>
 </dict>
 </plist>
