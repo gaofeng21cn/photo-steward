@@ -75,6 +75,7 @@ jobs:
       - name: Publish the same product version
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
