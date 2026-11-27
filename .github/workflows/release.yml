@@ -30,7 +30,7 @@ jobs:
           version = os.environ['GITHUB_REF_NAME'].removeprefix('v')
           subprocess.run(['git', 'merge-base', '--is-ancestor', os.environ['GITHUB_SHA'], 'origin/main'], check=True)
           assert tomllib.loads(Path('pyproject.toml').read_text())['project']['version'] == version
-          assert json.loads(Path('opl-package.json').read_text())['version'] == version
+          assert json.loads(Path('opl-package.json').read_text())['identity']['version'] == version
           assert plistlib.loads(Path('app/PhotoCenterMenuBar/Info.plist').read_bytes())['CFBundleShortVersionString'] == version
           PY
           python3 scripts/materialize_package.py --check

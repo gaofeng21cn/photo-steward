@@ -15,7 +15,10 @@ def source_at(path: Path, version="0.4.12"):
     (path / "scripts/icloud-photo-sync").chmod(0o755)
     (path / "skills/photo-steward").mkdir(parents=True)
     (path / "skills/photo-steward/SKILL.md").write_text("---\nname: photo-steward\n---\n")
-    (path / "opl-package.json").write_text(json.dumps({"package_id": "photo-steward", "version": version}))
+    (path / "opl-package.json").write_text(json.dumps({
+        "schema_version": "opl.package.v2",
+        "identity": {"id": "photo-steward", "version": version},
+    }))
     return path
 
 
@@ -194,5 +197,6 @@ def test_native_package_and_python_versions_match():
     manifest = json.loads((root / "opl-package.json").read_text())
     project = tomllib.loads((root / "pyproject.toml").read_text())
     info = plistlib.loads((root / "app/PhotoCenterMenuBar/Info.plist").read_bytes())
-    assert project["project"]["version"] == info["CFBundleShortVersionString"] == manifest["version"]
-    assert manifest["presentation"]["software_type"] == "application"
+    assert manifest["schema_version"] == "opl.package.v2"
+    assert project["project"]["version"] == info["CFBundleShortVersionString"] == manifest["identity"]["version"]
+    assert manifest["identity"]["intent"] == "app"

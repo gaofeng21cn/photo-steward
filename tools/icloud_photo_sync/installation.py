@@ -54,11 +54,17 @@ def _read(path: Path, limit: int = 262144) -> bytes:
 
 def _source(root: Path) -> dict:
     manifest = json.loads(_read(root / "opl-package.json"))
-    if manifest.get("package_id") != PACKAGE_ID or not isinstance(manifest.get("version"), str):
+    identity = manifest.get("identity")
+    if (
+        manifest.get("schema_version") != "opl.package.v2"
+        or not isinstance(identity, dict)
+        or identity.get("id") != PACKAGE_ID
+        or not isinstance(identity.get("version"), str)
+    ):
         raise InstallationError("source_identity_invalid")
     if not (root / "tools/icloud_photo_sync/cli.py").is_file() or not (root / "scripts/icloud-photo-sync").is_file():
         raise InstallationError("source_entrypoint_missing")
-    return manifest
+    return identity
 
 
 def _app(app: Path) -> dict:
@@ -248,7 +254,7 @@ def inspect(home: Path, codex_home: Path, app_paths: list[Path] | None = None) -
             }
         )
     for source in _development_sources(home):
-        manifest = _source(source)
+        identity = _source(source)
         active = (cli.is_symlink() and cli.resolve() == source / "scripts/icloud-photo-sync") or (
             wrapper_current and current.is_symlink() and current.resolve() == source
         )
@@ -257,7 +263,7 @@ def inspect(home: Path, codex_home: Path, app_paths: list[Path] | None = None) -
                 "installation_id": _identity(source),
                 "kind": "source_link",
                 "mode": "development",
-                "version": manifest["version"],
+                "version": identity["version"],
                 "location": str(source),
                 "manager": "package_owner",
                 "active": active,
@@ -522,12 +528,12 @@ def execute(args: argparse.Namespace) -> dict:
             _activate(selected, home, codex_home, args.app_path)
         elif action == "link":
             source = args.source.resolve()
-            manifest = _source(source)
+            identity = _source(source)
             row = {
                 "kind": "source_link",
                 "mode": "development",
                 "location": str(source),
-                "version": manifest["version"],
+                "version": identity["version"],
                 "installation_id": _identity(source),
             }
             _activate(row, home, codex_home, args.app_path)
