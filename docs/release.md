@@ -37,7 +37,7 @@ for both architectures, includes the CLI and Codex Skill, and signs the app
 with Developer ID and the hardened runtime.
 
 GitHub Actions (`release.yml`) calls the shared
-`gaofeng21cn/one-person-lab/.github/workflows/reusable-macos-sparkle-release.yml@main`
+`gaofeng21cn/opl-release/.github/workflows/reusable-macos-sparkle-release.yml@v1`
 workflow to notarize both `Photo Steward.app` and `Photo-Steward.dmg`, sign
 `appcast.xml` using the Ed25519 private key in the `release` environment
 (`SPARKLE_ED25519_PRIVATE_KEY`), and publish `Photo-Steward.dmg`,
