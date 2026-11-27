@@ -2,8 +2,9 @@
 
 Photo Steward is one Agent-native OPL MiniApp. `photo-steward` is its stable
 Package identity. The desktop console, command-line interface, local Skill and
-shared MCP review view call the same photo owner. A Codex plugin supplies an
-integration entry point; it does not create another photo store or sync engine.
+shared MCP review view call the same photo owner. The root `opl-package.json`
+(`opl.package.v2`) declares the Framework integration entry point; it does not
+create another photo store or sync engine.
 
 ## Installation, updates, and activation
 
@@ -12,7 +13,7 @@ integration entry point; it does not create another photo store or sync engine.
 | Published desktop App | `/Applications/Photo Steward.app` or `~/Applications/Photo Steward.app` | Signed & notarized DMG installation, native Sparkle 2 in-app updates, local CLI/Skill activation |
 | Developer desktop build | `~/Applications/Photo Steward Development/Photo Steward.app` | Built by the developer via `scripts/install_menu_bar_app.sh`, local CLI/Skill activation |
 | Connected source checkout | Explicitly selected checkout | Connect (`link`), activate, `unlink`; the developer maintains source and dependencies |
-| Codex integration | Codex's native plugin location | Managed by the configured Codex carrier |
+| OPL Package | OPL Framework (`opl pack`) managed installation | Managed via root `opl-package.json` (`opl.package.v2`) and optional host projections |
 
 In-app updates for the macOS desktop App are owned exclusively by **Sparkle 2**
 using Ed25519-signed `appcast.xml` feeds (`SUEnableAutomaticChecks = true`,
@@ -75,6 +76,7 @@ retained runtime copies.
 
 iCloud Photos remains the source of photo facts. OS Photos permissions, mounted
 NAS access and existing credential providers own credentials. The read-only
-shared MCP view and explicit reviewed-plan apply action remain in
-`app-contribution-adapter.json`. Software lifecycle and photo plan execution
+shared MCP view and explicit reviewed-plan apply action are declared in
+`opl-package.json` (`provides.contribution_handler` ->
+`scripts/app_contribution.py` and `ui.declarative.views`). Software lifecycle and photo plan execution
 are separate actions, and activating software never applies a photo plan.

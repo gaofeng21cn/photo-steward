@@ -170,7 +170,7 @@ Photo Steward 采用 [Apache License 2.0](./LICENSE) 发布。以后加入第三
 
 ## 验证
 
-Package 内容锁的字节编码由 Framework 持有。便携副本 `scripts/_opl_package_content_lock.py` 由 Framework 的 `scripts/materialize-python-support.mjs --module package_content_lock --target /path/to/photo-steward/scripts/_opl_package_content_lock.py` 生成；用 `python3 scripts/materialize_package.py --check --framework-root /path/to/one-person-lab` 同时核对 carrier 与副本逐字一致。
+运行 `python3 scripts/materialize_package.py --check` 核对根 `opl-package.json`（`opl.package.v2`）清单与 owner 入口，并用 Framework `opl pack inspect . --json` 与 `opl pack build . --no-write-lock --json` 校验发布打包。
 
 ```bash
 python3 -m pytest tests -q

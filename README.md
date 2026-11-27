@@ -220,8 +220,8 @@ create and review a fresh remaining-work plan; reopening never repeats apply.
 These commands also work without a graphical host.
 
 The native App and existing CLI commands remain the same sync owner. This
-source change does not update an already installed native runtime; a carrier
-using the new descriptor requires the matching CLI. Synthetic tests cover the
+source change does not update an already installed native runtime; a caller
+using the updated `opl-package.json` requires the matching CLI. Synthetic tests cover the
 owner handoff and local-file mutation. Real Photos/NAS permissions, native App
 installation, and cross-host UI acceptance are separate validation surfaces.
 
@@ -250,7 +250,7 @@ attribution requirements.
 
 ## Verification
 
-Package content-lock encoding is owned by Framework. The portable `scripts/_opl_package_content_lock.py` copy is generated with Framework's `scripts/materialize-python-support.mjs --module package_content_lock --target /path/to/photo-steward/scripts/_opl_package_content_lock.py`. Run `python3 scripts/materialize_package.py --check --framework-root /path/to/one-person-lab` to verify both the carrier and byte-for-byte helper parity.
+Validate the root `opl-package.json` (`opl.package.v2`) manifest and owner entrypoints with `python3 scripts/materialize_package.py --check`, and validate Framework packaging with `opl pack inspect . --json` / `opl pack build . --no-write-lock --json`.
 
 ```bash
 python3 -m pytest tests -q
